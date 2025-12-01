@@ -57,15 +57,6 @@ labelOverlay.addTo(map);
 // FIRE STATIONS – ADDRESSES & COLORS
 // -------------------------------------------
 // We’ll geocode these at startup so markers sit on real buildings.
-const stationColors = {
-  "1": "#ff5555",
-  "2": "#ff9955",
-  "3": "#ffee55",
-  "4": "#55ff55",
-  "5": "#55ddff",
-  "6": "#9977ff",
-  "7": "#ff77dd",
-};
 
 const stations = [
   {
@@ -222,15 +213,6 @@ function buildStationVoronoi() {
     if (!poly || !poly.properties || !poly.properties.id) return;
     const id = poly.properties.id;
     const color = stationColors[id] || "#999";
-
-    // Optional: clip to city bounds box
-    const cityPoly = turf.bboxPolygon(bbox);
-    let clipped;
-    try {
-      clipped = turf.intersect(poly, cityPoly) || poly;
-    } catch {
-      clipped = poly;
-    }
 
     // Store GeoJSON polygon
     stationAreasById[id] = clipped;
