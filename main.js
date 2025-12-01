@@ -1,11 +1,12 @@
 // Decatur Address Drill – main.js
-// - Shows all 7 fire stations as markers
-// - Station selector: bias random address near selected station (or anywhere)
-// - Toggle to show / hide street names (switch base tile layer)
+// - Black & white map (solid black streets) using Stamen Toner tiles
+// - All 7 fire stations are geocoded from their real addresses
+// - Station selector biases random address near chosen station (fallback = whole city)
+// - Toggle to show / hide street names (swap tile layers)
 // - On "New Drill", gets a random real address in Decatur with a house number
 // - User clicks where they think it is; app scores their guess
 
-// DOM elements
+// ------------ DOM ELEMENTS ------------
 const newDrillBtn = document.getElementById("new-drill-btn");
 const currentAddressSpan = document.getElementById("current-address");
 const messageDiv = document.getElementById("message");
@@ -15,113 +16,105 @@ const labelsCheckbox = document.getElementById("toggle-labels");
 // Rough center of Decatur, IL
 const map = L.map("map").setView([39.842468, -88.953148], 13);
 
-// --- Base map layers (with and without labels) ---
-
-// Normal OpenStreetMap with labels
-const osmWithLabels = L.tileLayer(
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+// ------------ BASE MAP LAYERS (BLACK & WHITE) ------------
+// Stamen Toner = black streets on white background with labels
+const tonerWithLabels = L.tileLayer(
+  "https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png",
   {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors',
-  }
-);
-
-// Carto "light_nolabels" – roads & buildings but no labels/street names
-const osmNoLabels = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-  {
-    maxZoom: 19,
+    maxZoom: 20,
+    subdomains: "abcd",
     attribution:
-      '&copy; OpenStreetMap contributors &copy; CARTO',
+      'Map tiles by <a href="https://stamen.com/">Stamen Design</a>, ' +
+      'under <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. ' +
+      'Data by <a href="https://www.openstreetmap.org/">OpenStreetMap</a>, ' +
+      'under ODbL.',
   }
 );
 
-// Start with labels on
-let currentBaseLayer = osmWithLabels;
+// Toner-background = same style but NO labels (street names hidden)
+const tonerNoLabels = L.tileLayer(
+  "https://stamen-tiles.a.ssl.fastly.net/toner-background/{z}/{x}/{y}.png",
+  {
+    maxZoom: 20,
+    subdomains: "abcd",
+    attribution:
+      'Map tiles by <a href="https://stamen.com/">Stamen Design</a>, ' +
+      'under <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. ' +
+      'Data by <a href="https://www.openstreetmap.org/">OpenStreetMap</a>, ' +
+      'under ODbL.',
+  }
+);
+
+// Start with labels visible
+let currentBaseLayer = tonerWithLabels;
 currentBaseLayer.addTo(map);
 
-// Handle street-name toggle
+// Checkbox to toggle labels on/off
 labelsCheckbox.addEventListener("change", () => {
   const wantLabels = labelsCheckbox.checked;
 
   if (wantLabels) {
-    if (map.hasLayer(osmNoLabels)) map.removeLayer(osmNoLabels);
-    if (!map.hasLayer(osmWithLabels)) osmWithLabels.addTo(map);
-    currentBaseLayer = osmWithLabels;
+    if (map.hasLayer(tonerNoLabels)) map.removeLayer(tonerNoLabels);
+    if (!map.hasLayer(tonerWithLabels)) tonerWithLabels.addTo(map);
+    currentBaseLayer = tonerWithLabels;
   } else {
-    if (map.hasLayer(osmWithLabels)) map.removeLayer(osmWithLabels);
-    if (!map.hasLayer(osmNoLabels)) osmNoLabels.addTo(map);
-    currentBaseLayer = osmNoLabels;
+    if (map.hasLayer(tonerWithLabels)) map.removeLayer(tonerWithLabels);
+    if (!map.hasLayer(tonerNoLabels)) tonerNoLabels.addTo(map);
+    currentBaseLayer = tonerNoLabels;
   }
 });
 
-// --- Fire Station Markers ---
+// ------------ FIRE STATIONS (GEOCODED) ------------
 
-// NOTE: coords are approximate but close enough for drill visualization.
-// You can refine later with exact GIS data if you want.
+// We’ll let Nominatim find the correct coordinates for these.
 const fireStations = [
   {
     id: "1",
     name: "Station 1 – Headquarters",
-    coords: [39.8654, -88.9519],
+    address: "1415 North Water Street, Decatur IL 62526",
+    coords: null, // will be [lat, lon]
   },
   {
     id: "2",
     name: "Station 2",
-    coords: [39.8448, -88.9143],
+    address: "2707 East William Street, Decatur IL 62526",
+    coords: null,
   },
   {
     id: "3",
     name: "Station 3",
-    coords: [39.8526, -88.9804],
+    address: "855 North Fairview Avenue, Decatur IL 62522",
+    coords: null,
   },
   {
     id: "4",
     name: "Station 4",
-    coords: [39.8868, -88.9296],
+    address: "2760 North 22nd Street, Decatur IL 62526",
+    coords: null,
   },
   {
     id: "5",
     name: "Station 5",
-    coords: [39.8953, -88.9458],
+    address: "3808 Greenridge Drive, Decatur IL 62526",
+    coords: null,
   },
   {
     id: "6",
     name: "Station 6",
-    coords: [39.8274, -88.9440],
+    address: "1880 South US Route BUS 51, Decatur IL",
+    coords: null,
   },
   {
     id: "7",
     name: "Station 7",
-    coords: [39.8423, -88.8743],
+    address: "3540 East Chestnut Avenue, Decatur IL",
+    coords: null,
   },
 ];
 
-// Add red markers with station names
-fireStations.forEach((station) => {
-  L.marker(station.coords, {
-    icon: L.icon({
-      iconUrl:
-        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-      shadowUrl:
-        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-    }),
-  })
-    .addTo(map)
-    .bindPopup(station.name);
-});
+let stationsReady = false;
 
-// --- Drill state ---
-
-let currentTarget = null; // { label, coords: [lat, lon] }
-let targetMarker = null; // Leaflet marker for correct answer
-let guessMarker = null; // Leaflet marker for user guess
-let drillActive = false;
-
-// Helpers
+// Simple helper to show messages
 function setMessage(text, isError = false) {
   messageDiv.textContent = text;
   messageDiv.style.color = isError ? "darkred" : "#333";
@@ -130,6 +123,81 @@ function setMessage(text, isError = false) {
 function metersToFeet(m) {
   return m * 3.28084;
 }
+
+// Forward geocode a station address with Nominatim
+async function geocodeAddress(address) {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("q", address);
+  url.searchParams.set("accept-language", "en");
+
+  const resp = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": "DecaturFireDrillApp/1.0 (youremail@example.com)",
+      "Accept": "application/json",
+    },
+  });
+
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  if (!data || !data[0]) return null;
+
+  const item = data[0];
+  const lat = Number(item.lat);
+  const lon = Number(item.lon);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+
+  return [lat, lon];
+}
+
+// Initialize station markers by geocoding each address
+async function initStations() {
+  setMessage("Loading station locations...");
+  for (const station of fireStations) {
+    try {
+      const coords = await geocodeAddress(station.address);
+      if (coords) {
+        station.coords = coords;
+
+        // Add a red marker with the station name
+        L.marker(coords, {
+          icon: L.icon({
+            iconUrl:
+              "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+            shadowUrl:
+              "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+          }),
+        })
+          .addTo(map)
+          .bindPopup(`${station.name}<br>${station.address}`);
+      } else {
+        console.warn("Could not geocode station:", station);
+      }
+    } catch (e) {
+      console.error("Error geocoding station:", station, e);
+    }
+  }
+  stationsReady = true;
+  setMessage(
+    'Stations loaded. Choose a station (or "Any"), adjust labels, then click "New Drill".'
+  );
+}
+
+// Kick off station geocoding immediately
+initStations();
+
+// ------------ RANDOM ADDRESS / DRILL LOGIC ------------
+
+// Drill state
+let currentTarget = null; // { label, coords: [lat, lon] }
+let targetMarker = null;
+let guessMarker = null;
+let drillActive = false;
 
 /**
  * Get a random coordinate inside a bounding box.
@@ -142,10 +210,11 @@ function randomPointInBbox(bbox) {
 }
 
 /**
- * Get a small bounding box around a station (for station-specific drills).
+ * Compute a small bounding box around a station for station-specific drills.
+ * If coords missing, return city-wide bbox.
  */
 function getStationBbox(stationId) {
-  // City-wide fallback box
+  // City-wide fallback
   const cityBbox = {
     south: 39.80,
     west: -88.99,
@@ -156,12 +225,10 @@ function getStationBbox(stationId) {
   if (stationId === "any") return cityBbox;
 
   const station = fireStations.find((s) => s.id === stationId);
-  if (!station) return cityBbox;
+  if (!station || !station.coords) return cityBbox;
 
   const [lat, lon] = station.coords;
-
-  // ~1–1.5 miles around the station (tweak if you want bigger/smaller)
-  const latDelta = 0.02;
+  const latDelta = 0.02; // ~1–1.5 miles
   const lonDelta = 0.02;
 
   return {
@@ -173,10 +240,7 @@ function getStationBbox(stationId) {
 }
 
 /**
- * Ask Nominatim (OpenStreetMap geocoder) for the address at a lat/lon.
- * Returns null if no good address / not Decatur / no house number.
- *
- * IMPORTANT: replace the email in User-Agent with YOUR real contact.
+ * Reverse-geocode a point and return a Decatur address WITH a house number.
  */
 async function reverseGeocodeDecatur(lat, lon) {
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
@@ -194,10 +258,7 @@ async function reverseGeocodeDecatur(lat, lon) {
     },
   });
 
-  if (!resp.ok) {
-    return null;
-  }
-
+  if (!resp.ok) return null;
   const data = await resp.json();
   if (!data.address) return null;
 
@@ -210,12 +271,8 @@ async function reverseGeocodeDecatur(lat, lon) {
     addr.county ||
     "";
 
-  // Make sure it's actually Decatur
-  if (cityName.toLowerCase() !== "decatur") {
-    return null;
-  }
+  if (cityName.toLowerCase() !== "decatur") return null;
 
-  // Require a proper house number + street
   const house = addr.house_number || "";
   const road =
     addr.road ||
@@ -224,37 +281,29 @@ async function reverseGeocodeDecatur(lat, lon) {
     addr.neighbourhood ||
     "";
 
-  if (!house || !road) {
-    return null;
-  }
+  if (!house || !road) return null;
 
   const state = addr.state || "IL";
   const label = `${house} ${road}, Decatur, ${state}`
     .replace(/\s+/g, " ")
     .trim();
 
-  // Extra safety: require at least one digit in label
-  if (!/\d/.test(label)) {
-    return null;
-  }
+  // Require at least one digit somewhere in the label
+  if (!/\d/.test(label)) return null;
 
   const latNum = Number(data.lat);
   const lonNum = Number(data.lon);
-
-  if (!label || Number.isNaN(latNum) || Number.isNaN(lonNum)) {
-    return null;
-  }
+  if (Number.isNaN(latNum) || Number.isNaN(lonNum)) return null;
 
   return {
     label,
-    coords: [latNum, lonNum], // [lat, lon]
+    coords: [latNum, lonNum],
   };
 }
 
 /**
- * Get a random address INSIDE Decatur.
- * If a station is selected, try that station's bbox first,
- * then fall back to whole-city bbox if needed.
+ * Get a random address in Decatur.
+ * If a station is selected, try that station's bbox first, then whole city.
  */
 async function getRandomAddressInDecatur(maxTries = 40, stationId = "any") {
   const cityBbox = {
@@ -265,17 +314,16 @@ async function getRandomAddressInDecatur(maxTries = 40, stationId = "any") {
   };
 
   const stationBbox = getStationBbox(stationId);
-
   const halfTries = Math.floor(maxTries / 2);
 
-  // First: try near the chosen station (if any)
+  // Try near chosen station first
   for (let i = 0; i < halfTries; i++) {
     const { lat, lon } = randomPointInBbox(stationBbox);
     const result = await reverseGeocodeDecatur(lat, lon);
     if (result) return result;
   }
 
-  // Second: fall back to entire city if station area was too sparse
+  // Fallback: anywhere in the city
   for (let i = halfTries; i < maxTries; i++) {
     const { lat, lon } = randomPointInBbox(cityBbox);
     const result = await reverseGeocodeDecatur(lat, lon);
@@ -287,9 +335,9 @@ async function getRandomAddressInDecatur(maxTries = 40, stationId = "any") {
   );
 }
 
-// New drill: fetch a random Decatur address
+// Start a new drill round
 async function startNewDrill() {
-  // Clear old markers
+  // Clear markers from previous round
   if (targetMarker) {
     map.removeLayer(targetMarker);
     targetMarker = null;
@@ -300,6 +348,12 @@ async function startNewDrill() {
   }
 
   const selectedStationId = stationSelect?.value || "any";
+
+  if (!stationsReady && selectedStationId !== "any") {
+    setMessage(
+      "Station locations are still loading; using whole-city area for now."
+    );
+  }
 
   setMessage(
     selectedStationId === "any"
@@ -313,7 +367,6 @@ async function startNewDrill() {
     setMessage("Drill started. Click on the map where you think this address is.");
     drillActive = true;
 
-    // Recenter map around Decatur center
     map.setView([39.842468, -88.953148], 13);
   } catch (err) {
     currentTarget = null;
@@ -322,7 +375,7 @@ async function startNewDrill() {
   }
 }
 
-// Handle map clicks: user guess
+// Handle map clicks (user guess)
 map.on("click", (e) => {
   if (!drillActive || !currentTarget) {
     setMessage('Click "New Drill" to start.', true);
@@ -338,7 +391,7 @@ map.on("click", (e) => {
     guessMarker = L.marker(guessLatLng, { title: "Your guess" }).addTo(map);
   }
 
-  // Compute distance between guess and target using Turf
+  // Distance using Turf
   const guessPoint = turf.point([guessLatLng.lng, guessLatLng.lat]);
   const targetPoint = turf.point([
     currentTarget.coords[1], // lon
@@ -350,7 +403,7 @@ map.on("click", (e) => {
   });
   const distanceFeet = metersToFeet(distanceMeters);
 
-  // Drop the actual location marker (if not already)
+  // Actual location marker
   if (!targetMarker) {
     targetMarker = L.marker(
       [currentTarget.coords[0], currentTarget.coords[1]],
@@ -366,11 +419,11 @@ map.on("click", (e) => {
     ]);
   }
 
-  // Zoom to show both points
+  // Zoom so both points are visible
   const group = L.featureGroup([guessMarker, targetMarker]);
   map.fitBounds(group.getBounds().pad(0.5));
 
-  // Basic scoring message
+  // Scoring
   let rating;
   if (distanceFeet < 150) {
     rating = "🔥 Nailed it!";
@@ -386,7 +439,6 @@ map.on("click", (e) => {
     )} feet (${distanceMeters.toFixed(0)} m) from the actual address.`
   );
 
-  // End this drill round; require another "New Drill" to continue
   drillActive = false;
 });
 
@@ -395,7 +447,7 @@ newDrillBtn.addEventListener("click", () => {
   startNewDrill();
 });
 
-// Initial message
+// Initial hint
 setMessage(
-  'Choose a station (or "Any"), decide if you want street names on or off, then click "New Drill" to start.'
+  'Loading stations… then choose a station (or "Any"), decide if you want labels, and click "New Drill".'
 );
