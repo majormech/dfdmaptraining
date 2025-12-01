@@ -25,18 +25,20 @@ const map = L.map("map", {
   maxBoundsViscosity: 0.8,
 });
 
-// Esri World Street Map – solid streets like Google
-const esriStreets = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+// Road base with NO labels (Carto)
+const roadBase = L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
   {
     maxZoom: 19,
     minZoom: 11,
-    attribution: "Tiles © Esri"
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+      'contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }
 );
 
-// Esri World Imagery – satellite
-const esriImagery = L.tileLayer(
+// Satellite base (Esri imagery)
+const imageryBase = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   {
     maxZoom: 19,
@@ -46,22 +48,24 @@ const esriImagery = L.tileLayer(
   }
 );
 
-// Label overlay (for SATELLITE only – streets layer already has labels)
+// Label overlay (street names) – can be toggled on/off
 const labelOverlay = L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
   {
+    maxZoom: 19,
+    minZoom: 11,
     attribution: ""
   }
 );
 
-// Start with streets
-let currentBase = esriStreets;
+// Start with road + labels ON
+let currentBase = roadBase;
 currentBase.addTo(map);
+labelOverlay.addTo(map);
 
 // -------------------------------------------
 // STATION DEFINITIONS (hard-coded coords)
 // -------------------------------------------
-// Colors for polygons/areas
 const stationColors = {
   "1": "#ff5555",
   "2": "#ff9955",
@@ -72,7 +76,6 @@ const stationColors = {
   "7": "#ff77dd",
 };
 
-// Lat, lon (corrected for 2, 6, 7)
 const stations = [
   {
     id: "1",
@@ -113,15 +116,15 @@ const stations = [
   {
     id: "7",
     name: "Station 7",
-    address: "3540 E Chestnut Avenue / 1250 S Airport Road area, Decatur, IL 62521",
+    address: "3540 E Chestnut Avenue, Decatur, IL 62521",
     coords: [39.82831, -88.87796] // corrected
   }
 ];
 
-let stationAreasById = {};   // id -> GeoJSON polygon
+let stationAreasById = {};
 let stationMarkers = [];
 
-// Add station markers
+// Add markers
 stations.forEach((s) => {
   const marker = L.marker(s.coords).addTo(map);
   marker.bindPopup(`<strong>${s.name}</strong><br>${s.address}`);
@@ -227,7 +230,7 @@ function formatAddress(addr) {
   }, ${addr.state || "IL"}`.replace(/\s+/g, " ");
 }
 
-// Get random address for a station (inside its polygon if available)
+// Get random address for a station (inside its area polygon if available)
 async function getRandomDecaturAddressForStation(station) {
   const cityBbox = [
     decaturBounds.getWest(),
@@ -245,7 +248,6 @@ async function getRandomDecaturAddressForStation(station) {
 
     const point = turf.point([lon, lat]);
 
-    // If we have a polygon for this station, require the point to be inside it
     if (areaPoly && !turf.booleanPointInPolygon(point, areaPoly)) continue;
 
     const data = await reverseGeocode(lat, lon);
@@ -359,42 +361,34 @@ async function startNewDrill() {
 // -------------------------------------------
 newDrillBtn.addEventListener("click", startNewDrill);
 
-// Basemap toggle – road vs satellite
+// Basemap toggle – road vs satellite; labels are separate
 basemapSelect.addEventListener("change", () => {
   map.removeLayer(currentBase);
 
   if (basemapSelect.value === "satellite") {
-    currentBase = esriImagery;
-    currentBase.addTo(map);
-
-    // Apply label overlay only if checkbox is on
-    if (streetNamesCheckbox.checked) {
-      labelOverlay.addTo(map);
-    } else {
-      map.removeLayer(labelOverlay);
-    }
+    currentBase = imageryBase;
   } else {
-    // Road view: Esri streets already has labels – no extra label overlay
-    currentBase = esriStreets;
-    currentBase.addTo(map);
+    currentBase = roadBase;
+  }
+
+  currentBase.addTo(map);
+
+  // Apply labels according to checkbox
+  if (streetNamesCheckbox.checked) {
+    labelOverlay.addTo(map);
+  } else {
     map.removeLayer(labelOverlay);
   }
 });
 
-// Street names toggle – affects satellite only
+// Street names toggle – works for BOTH road and satellite views
 streetNamesCheckbox.addEventListener("change", () => {
-  if (basemapSelect.value === "satellite") {
-    if (streetNamesCheckbox.checked) {
-      labelOverlay.addTo(map);
-    } else {
-      map.removeLayer(labelOverlay);
-    }
+  if (streetNamesCheckbox.checked) {
+    labelOverlay.addTo(map);
   } else {
-    // On streets layer, labels are built-in – ensure overlay is off
     map.removeLayer(labelOverlay);
   }
 });
 
 // Initial status
 setStatus("Pick a station, choose map view, then click “New Drill”.");
-
