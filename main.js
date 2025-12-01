@@ -1,8 +1,7 @@
 // Decatur Address Drill – main.js
-// - Black & white map (solid black streets) using Stamen Toner tiles
+// - Carto basemap (reliable) with a labels / no-labels toggle
 // - All 7 fire stations are geocoded from their real addresses
 // - Station selector biases random address near chosen station (fallback = whole city)
-// - Toggle to show / hide street names (swap tile layers)
 // - On "New Drill", gets a random real address in Decatur with a house number
 // - User clicks where they think it is; app scores their guess
 
@@ -16,37 +15,31 @@ const labelsCheckbox = document.getElementById("toggle-labels");
 // Rough center of Decatur, IL
 const map = L.map("map").setView([39.842468, -88.953148], 13);
 
-// ------------ BASE MAP LAYERS (BLACK & WHITE) ------------
-// Stamen Toner = black streets on white background with labels
-const tonerWithLabels = L.tileLayer(
-  "https://stamen-tiles.a.ssl.fastly.net/toner/{z}/{x}/{y}.png",
+// ------------ BASE MAP LAYERS (Carto) ------------
+// Light map with labels (street names ON)
+const cartoWithLabels = L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
   {
-    maxZoom: 20,
-    subdomains: "abcd",
+    maxZoom: 19,
     attribution:
-      'Map tiles by <a href="https://stamen.com/">Stamen Design</a>, ' +
-      'under <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. ' +
-      'Data by <a href="https://www.openstreetmap.org/">OpenStreetMap</a>, ' +
-      'under ODbL.',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+      '&copy; <a href="https://carto.com/attributions">CARTO</a>',
   }
 );
 
-// Toner-background = same style but NO labels (street names hidden)
-const tonerNoLabels = L.tileLayer(
-  "https://stamen-tiles.a.ssl.fastly.net/toner-background/{z}/{x}/{y}.png",
+// Same style but NO labels (street names OFF)
+const cartoNoLabels = L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
   {
-    maxZoom: 20,
-    subdomains: "abcd",
+    maxZoom: 19,
     attribution:
-      'Map tiles by <a href="https://stamen.com/">Stamen Design</a>, ' +
-      'under <a href="https://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. ' +
-      'Data by <a href="https://www.openstreetmap.org/">OpenStreetMap</a>, ' +
-      'under ODbL.',
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+      '&copy; <a href="https://carto.com/attributions">CARTO</a>',
   }
 );
 
 // Start with labels visible
-let currentBaseLayer = tonerWithLabels;
+let currentBaseLayer = cartoWithLabels;
 currentBaseLayer.addTo(map);
 
 // Checkbox to toggle labels on/off
@@ -54,25 +47,23 @@ labelsCheckbox.addEventListener("change", () => {
   const wantLabels = labelsCheckbox.checked;
 
   if (wantLabels) {
-    if (map.hasLayer(tonerNoLabels)) map.removeLayer(tonerNoLabels);
-    if (!map.hasLayer(tonerWithLabels)) tonerWithLabels.addTo(map);
-    currentBaseLayer = tonerWithLabels;
+    if (map.hasLayer(cartoNoLabels)) map.removeLayer(cartoNoLabels);
+    if (!map.hasLayer(cartoWithLabels)) cartoWithLabels.addTo(map);
+    currentBaseLayer = cartoWithLabels;
   } else {
-    if (map.hasLayer(tonerWithLabels)) map.removeLayer(tonerWithLabels);
-    if (!map.hasLayer(tonerNoLabels)) tonerNoLabels.addTo(map);
-    currentBaseLayer = tonerNoLabels;
+    if (map.hasLayer(cartoWithLabels)) map.removeLayer(cartoWithLabels);
+    if (!map.hasLayer(cartoNoLabels)) cartoNoLabels.addTo(map);
+    currentBaseLayer = cartoNoLabels;
   }
 });
 
-// ------------ FIRE STATIONS (GEOCODED) ------------
-
-// We’ll let Nominatim find the correct coordinates for these.
+// ------------ FIRE STATIONS (GEOCODED BY ADDRESS) ------------
 const fireStations = [
   {
     id: "1",
     name: "Station 1 – Headquarters",
     address: "1415 North Water Street, Decatur IL 62526",
-    coords: null, // will be [lat, lon]
+    coords: null,
   },
   {
     id: "2",
@@ -114,7 +105,6 @@ const fireStations = [
 
 let stationsReady = false;
 
-// Simple helper to show messages
 function setMessage(text, isError = false) {
   messageDiv.textContent = text;
   messageDiv.style.color = isError ? "darkred" : "#333";
@@ -124,7 +114,7 @@ function metersToFeet(m) {
   return m * 3.28084;
 }
 
-// Forward geocode a station address with Nominatim
+// Forward geocode with Nominatim
 async function geocodeAddress(address) {
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("format", "jsonv2");
@@ -152,7 +142,7 @@ async function geocodeAddress(address) {
   return [lat, lon];
 }
 
-// Initialize station markers by geocoding each address
+// Geocode stations and add markers
 async function initStations() {
   setMessage("Loading station locations...");
   for (const station of fireStations) {
@@ -161,7 +151,6 @@ async function initStations() {
       if (coords) {
         station.coords = coords;
 
-        // Add a red marker with the station name
         L.marker(coords, {
           icon: L.icon({
             iconUrl:
@@ -184,37 +173,26 @@ async function initStations() {
   }
   stationsReady = true;
   setMessage(
-    'Stations loaded. Choose a station (or "Any"), adjust labels, then click "New Drill".'
+    'Stations loaded. Choose a station (or "Any"), decide if you want labels, then click "New Drill".'
   );
 }
 
-// Kick off station geocoding immediately
 initStations();
 
 // ------------ RANDOM ADDRESS / DRILL LOGIC ------------
 
-// Drill state
 let currentTarget = null; // { label, coords: [lat, lon] }
 let targetMarker = null;
 let guessMarker = null;
 let drillActive = false;
 
-/**
- * Get a random coordinate inside a bounding box.
- * bbox = { south, west, north, east }
- */
 function randomPointInBbox(bbox) {
   const lat = bbox.south + Math.random() * (bbox.north - bbox.south);
   const lon = bbox.west + Math.random() * (bbox.east - bbox.west);
   return { lat, lon };
 }
 
-/**
- * Compute a small bounding box around a station for station-specific drills.
- * If coords missing, return city-wide bbox.
- */
 function getStationBbox(stationId) {
-  // City-wide fallback
   const cityBbox = {
     south: 39.80,
     west: -88.99,
@@ -228,7 +206,7 @@ function getStationBbox(stationId) {
   if (!station || !station.coords) return cityBbox;
 
   const [lat, lon] = station.coords;
-  const latDelta = 0.02; // ~1–1.5 miles
+  const latDelta = 0.02;
   const lonDelta = 0.02;
 
   return {
@@ -239,9 +217,6 @@ function getStationBbox(stationId) {
   };
 }
 
-/**
- * Reverse-geocode a point and return a Decatur address WITH a house number.
- */
 async function reverseGeocodeDecatur(lat, lon) {
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
   url.searchParams.set("format", "jsonv2");
@@ -288,7 +263,6 @@ async function reverseGeocodeDecatur(lat, lon) {
     .replace(/\s+/g, " ")
     .trim();
 
-  // Require at least one digit somewhere in the label
   if (!/\d/.test(label)) return null;
 
   const latNum = Number(data.lat);
@@ -301,10 +275,6 @@ async function reverseGeocodeDecatur(lat, lon) {
   };
 }
 
-/**
- * Get a random address in Decatur.
- * If a station is selected, try that station's bbox first, then whole city.
- */
 async function getRandomAddressInDecatur(maxTries = 40, stationId = "any") {
   const cityBbox = {
     south: 39.80,
@@ -316,14 +286,12 @@ async function getRandomAddressInDecatur(maxTries = 40, stationId = "any") {
   const stationBbox = getStationBbox(stationId);
   const halfTries = Math.floor(maxTries / 2);
 
-  // Try near chosen station first
   for (let i = 0; i < halfTries; i++) {
     const { lat, lon } = randomPointInBbox(stationBbox);
     const result = await reverseGeocodeDecatur(lat, lon);
     if (result) return result;
   }
 
-  // Fallback: anywhere in the city
   for (let i = halfTries; i < maxTries; i++) {
     const { lat, lon } = randomPointInBbox(cityBbox);
     const result = await reverseGeocodeDecatur(lat, lon);
@@ -335,9 +303,7 @@ async function getRandomAddressInDecatur(maxTries = 40, stationId = "any") {
   );
 }
 
-// Start a new drill round
 async function startNewDrill() {
-  // Clear markers from previous round
   if (targetMarker) {
     map.removeLayer(targetMarker);
     targetMarker = null;
@@ -375,7 +341,6 @@ async function startNewDrill() {
   }
 }
 
-// Handle map clicks (user guess)
 map.on("click", (e) => {
   if (!drillActive || !currentTarget) {
     setMessage('Click "New Drill" to start.', true);
@@ -384,18 +349,16 @@ map.on("click", (e) => {
 
   const guessLatLng = e.latlng;
 
-  // Place / move guess marker
   if (guessMarker) {
     guessMarker.setLatLng(guessLatLng);
   } else {
     guessMarker = L.marker(guessLatLng, { title: "Your guess" }).addTo(map);
   }
 
-  // Distance using Turf
   const guessPoint = turf.point([guessLatLng.lng, guessLatLng.lat]);
   const targetPoint = turf.point([
-    currentTarget.coords[1], // lon
-    currentTarget.coords[0], // lat
+    currentTarget.coords[1],
+    currentTarget.coords[0],
   ]);
 
   const distanceMeters = turf.distance(guessPoint, targetPoint, {
@@ -403,7 +366,6 @@ map.on("click", (e) => {
   });
   const distanceFeet = metersToFeet(distanceMeters);
 
-  // Actual location marker
   if (!targetMarker) {
     targetMarker = L.marker(
       [currentTarget.coords[0], currentTarget.coords[1]],
@@ -419,11 +381,9 @@ map.on("click", (e) => {
     ]);
   }
 
-  // Zoom so both points are visible
   const group = L.featureGroup([guessMarker, targetMarker]);
   map.fitBounds(group.getBounds().pad(0.5));
 
-  // Scoring
   let rating;
   if (distanceFeet < 150) {
     rating = "🔥 Nailed it!";
@@ -442,12 +402,10 @@ map.on("click", (e) => {
   drillActive = false;
 });
 
-// Wire up button
 newDrillBtn.addEventListener("click", () => {
   startNewDrill();
 });
 
-// Initial hint
 setMessage(
   'Loading stations… then choose a station (or "Any"), decide if you want labels, and click "New Drill".'
 );
