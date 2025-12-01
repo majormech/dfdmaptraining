@@ -13,7 +13,10 @@ const statusSpan = document.getElementById("status");
 // -------------------------------------------
 // MAP SETUP
 // -------------------------------------------
-const decaturBounds = L.latLngBounds([39.80, -89.05], [39.90, -88.85]);
+const decaturBounds = L.latLngBounds(
+  [39.80, -89.05], // SW-ish
+  [39.90, -88.85]  // NE-ish
+);
 
 const map = L.map("map", {
   center: [39.8425, -88.9531],
@@ -22,7 +25,7 @@ const map = L.map("map", {
   maxBoundsViscosity: 0.8,
 });
 
-// Road base
+// Road base (Carto)
 const roadBase = L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
   {
@@ -31,25 +34,29 @@ const roadBase = L.tileLayer(
   }
 );
 
-// Satellite base
+// Satellite base (Esri imagery)
 const satelliteBase = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 19, minZoom: 11 }
+  {
+    maxZoom: 19,
+    minZoom: 11,
+  }
 );
 
-// Labels
+// Labels overlay (street names)
 const labelOverlay = L.tileLayer(
   "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
 );
 
-// start on road mode
+// Start with road + labels
 let currentBase = roadBase;
 currentBase.addTo(map);
 labelOverlay.addTo(map);
 
 // -------------------------------------------
-// STATION DEFINITIONS (approx coords)
+// FIRE STATIONS – ADDRESSES & COLORS
 // -------------------------------------------
+// We’ll geocode these at startup so markers sit on real buildings.
 const stationColors = {
   "1": "#ff5555",
   "2": "#ff9955",
@@ -61,32 +68,187 @@ const stationColors = {
 };
 
 const stations = [
-  { id: "1", name: "Station 1 – Headquarters", coords: [39.8654, -88.9519] },
-  { id: "2", name: "Station 2", coords: [39.8408, -88.8933] },
-  { id: "3", name: "Station 3", coords: [39.8526, -88.9804] },
-  { id: "4", name: "Station 4", coords: [39.8868, -88.9296] },
-  { id: "5", name: "Station 5", coords: [39.8953, -88.9458] },
-  { id: "6", name: "Station 6", coords: [39.8274, -88.9440] },
-  { id: "7", name: "Station 7", coords: [39.8423, -88.8743] },
+  {
+    id: "1",
+    name: "Station 1 – Headquarters",
+    address: "1415 N Water Street, Decatur, IL 62526",
+    coords: null,
+  },
+  {
+    id: "2",
+    name: "Station 2",
+    address: "2707 E William Street, Decatur, IL 62526",
+    coords: null,
+  },
+  {
+    id: "3",
+    name: "Station 3",
+    address: "855 N Fairview Avenue, Decatur, IL 62526",
+    coords: null,
+  },
+  {
+    id: "4",
+    name: "Station 4",
+    address: "2760 N 22nd Street, Decatur, IL 62526",
+    coords: null,
+  },
+  {
+    id: "5",
+    name: "Station 5",
+    address: "3808 Greenridge Drive, Decatur, IL 62526",
+    coords: null,
+  },
+  {
+    id: "6",
+    name: "Station 6",
+    address: "1880 S US Route BUS 51, Decatur, IL 62521",
+    coords: null,
+  },
+  {
+    id: "7",
+    name: "Station 7",
+    address: "3540 E Chestnut Avenue, Decatur, IL 62521",
+    coords: null,
+  },
 ];
 
-// markers + color zones
-stations.forEach((s) => {
-  // marker
-  L.marker(s.coords).addTo(map).bindPopup(s.name);
-
-  // colored circle zone (will replace with polygons later)
-  L.circle(s.coords, {
-    radius: 2500,
-    color: stationColors[s.id],
-    weight: 2,
-    fillColor: stationColors[s.id],
-    fillOpacity: 0.12,
-  }).addTo(map);
-});
+let stationAreasById = {}; // id -> GeoJSON polygon
+let stationMarkers = [];
 
 // -------------------------------------------
-// HELPERS
+// GEOCODING HELPERS (Nominatim)
+// -------------------------------------------
+async function geocodeAddress(addr) {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", addr);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("countrycodes", "us");
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": "DecaturAddressDrill/1.0",
+      "Accept-Language": "en",
+    },
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data || !data[0]) return null;
+
+  const lat = parseFloat(data[0].lat);
+  const lon = parseFloat(data[0].lon);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+  return [lat, lon];
+}
+
+// -------------------------------------------
+// INIT STATIONS: GEOCODE, ADD MARKERS, MAKE POLYGONS
+// -------------------------------------------
+async function initStations() {
+  setStatus("Geocoding fire station addresses…");
+
+  // 1) Geocode each station
+  for (const s of stations) {
+    try {
+      const coords = await geocodeAddress(s.address);
+      if (coords) {
+        s.coords = coords;
+      } else {
+        console.warn("Could not geocode", s.name, "– will fall back later");
+      }
+    } catch (err) {
+      console.error("Geocode failed for", s.name, err);
+    }
+  }
+
+  // Fallback: if any station failed, give it approximate coords near city center
+  stations.forEach((s, idx) => {
+    if (!s.coords) {
+      const baseLat = 39.8425;
+      const baseLon = -88.9531;
+      s.coords = [
+        baseLat + 0.01 * Math.sin(idx),
+        baseLon + 0.01 * Math.cos(idx),
+      ];
+    }
+  });
+
+  // 2) Add markers
+  stations.forEach((s) => {
+    const marker = L.marker(s.coords).addTo(map);
+    marker.bindPopup(`<strong>${s.name}</strong><br>${s.address}`);
+    stationMarkers.push(marker);
+  });
+
+  // 3) Build Voronoi polygons = “station areas”
+  buildStationVoronoi();
+
+  setStatus(
+    "Stations loaded. Pick a station, choose map view, then click “New Drill”."
+  );
+}
+
+function buildStationVoronoi() {
+  // Build Turf FeatureCollection of station points
+  const ptFeatures = stations.map((s) =>
+    turf.point([s.coords[1], s.coords[0]], {
+      id: s.id,
+      name: s.name,
+    })
+  );
+
+  const fc = turf.featureCollection(ptFeatures);
+
+  const bbox = [
+    decaturBounds.getWest(),
+    decaturBounds.getSouth(),
+    decaturBounds.getEast(),
+    decaturBounds.getNorth(),
+  ];
+
+  const voronoi = turf.voronoi(fc, { bbox });
+
+  if (!voronoi || !voronoi.features) {
+    console.warn("Voronoi generation failed – no polygons created");
+    return;
+  }
+
+  // Clear any old areas
+  stationAreasById = {};
+
+  voronoi.features.forEach((poly) => {
+    if (!poly || !poly.properties || !poly.properties.id) return;
+    const id = poly.properties.id;
+    const color = stationColors[id] || "#999";
+
+    // Optional: clip to city bounds box
+    const cityPoly = turf.bboxPolygon(bbox);
+    let clipped;
+    try {
+      clipped = turf.intersect(poly, cityPoly) || poly;
+    } catch {
+      clipped = poly;
+    }
+
+    // Store GeoJSON polygon
+    stationAreasById[id] = clipped;
+
+    // Add to Leaflet with color
+    L.geoJSON(clipped, {
+      style: {
+        color: color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.12,
+      },
+    }).addTo(map);
+  });
+}
+
+// -------------------------------------------
+// RANDOM ADDRESS HELPERS
 // -------------------------------------------
 function setStatus(msg) {
   statusSpan.textContent = msg;
@@ -100,29 +262,22 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
-function getStation(id) {
+function getStationById(id) {
   return stations.find((s) => s.id === id);
 }
 
-function getRandomBbox(st) {
-  const [lat, lon] = st.coords;
-  return {
-    minLat: lat - 0.03,
-    maxLat: lat + 0.03,
-    minLon: lon - 0.04,
-    maxLon: lon + 0.04,
-  };
-}
+async function reverseGeocode(lat, lon) {
+  const url = new URL("https://nominatim.openstreetmap.org/reverse");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("lat", lat.toString());
+  url.searchParams.set("lon", lon.toString());
+  url.searchParams.set("addressdetails", "1");
 
-async function reverseGeo(lat, lon) {
-  const url =
-    "https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=" +
-    lat +
-    "&lon=" +
-    lon;
-
-  const res = await fetch(url, {
-    headers: { "User-Agent": "DecaturAddressDrill" },
+  const res = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": "DecaturAddressDrill/1.0",
+      "Accept-Language": "en",
+    },
   });
 
   if (!res.ok) return null;
@@ -130,71 +285,97 @@ async function reverseGeo(lat, lon) {
 }
 
 function formatAddress(addr) {
-  return `${addr.house_number || ""} ${addr.road || ""}, ${addr.city || ""}, ${
-    addr.state || "IL"
-  }`.replace(/\s+/g, " ");
+  return `${addr.house_number || ""} ${addr.road || ""}, ${
+    addr.city || addr.town || addr.village || "Decatur"
+  }, ${addr.state || "IL"}`.replace(/\s+/g, " ");
 }
 
-async function randomDecaturAddress(station) {
-  const bbox = station ? getRandomBbox(station) : null;
+async function getRandomDecaturAddressForStation(station) {
+  const cityBbox = [
+    decaturBounds.getWest(),
+    decaturBounds.getSouth(),
+    decaturBounds.getEast(),
+    decaturBounds.getNorth(),
+  ];
 
-  for (let i = 0; i < 25; i++) {
-    let lat, lon;
+  const areaPoly = station ? stationAreasById[station.id] : null;
+  const bbox = areaPoly ? turf.bbox(areaPoly) : cityBbox;
 
-    if (bbox) {
-      lat = rand(bbox.minLat, bbox.maxLat);
-      lon = rand(bbox.minLon, bbox.maxLon);
-    } else {
-      lat = rand(decaturBounds.getSouth(), decaturBounds.getNorth());
-      lon = rand(decaturBounds.getWest(), decaturBounds.getEast());
-    }
+  for (let i = 0; i < 30; i++) {
+    const lat = rand(bbox[1], bbox[3]);
+    const lon = rand(bbox[0], bbox[2]);
 
-    const data = await reverseGeo(lat, lon);
+    const point = turf.point([lon, lat]);
+
+    // If we have a polygon for this station, require the point to fall inside
+    if (areaPoly && !turf.booleanPointInPolygon(point, areaPoly)) continue;
+
+    const data = await reverseGeocode(lat, lon);
     if (!data || !data.address) continue;
 
-    const a = data.address;
-    if ((a.city || "").toLowerCase() !== "decatur") continue;
-    if (!a.house_number || !a.road) continue;
+    const addr = data.address;
+    const cityName = (addr.city || addr.town || addr.village || "").toLowerCase();
+    if (cityName !== "decatur") continue;
+    if (!addr.house_number || !addr.road) continue;
 
-    return { lat, lon, label: formatAddress(a) };
+    return {
+      lat,
+      lon,
+      label: formatAddress(addr),
+    };
   }
 
-  throw new Error("Couldn't find address");
+  throw new Error("Could not find a random Decatur address for this station.");
 }
 
 // -------------------------------------------
-// DRILL LOGIC
+// DRILL STATE & LOGIC
 // -------------------------------------------
 let actualMarker = null;
 let guessMarker = null;
 let clickHandler = null;
 
 function resetDrill() {
-  if (actualMarker) map.removeLayer(actualMarker);
-  if (guessMarker) map.removeLayer(guessMarker);
-  if (clickHandler) map.off("click", clickHandler);
-
-  actualMarker = null;
-  guessMarker = null;
-  clickHandler = null;
+  if (actualMarker) {
+    map.removeLayer(actualMarker);
+    actualMarker = null;
+  }
+  if (guessMarker) {
+    map.removeLayer(guessMarker);
+    guessMarker = null;
+  }
+  if (clickHandler) {
+    map.off("click", clickHandler);
+    clickHandler = null;
+  }
 }
 
-async function startDrill() {
+async function startNewDrill() {
   resetDrill();
 
   const choice = stationSelect.value;
-  const station = choice === "any" ? null : getStation(choice);
+  const station = choice === "any" ? null : getStationById(choice);
 
-  setStatus("Looking for a random address…");
+  if (choice !== "any" && (!station || !station.coords)) {
+    setStatus("Stations still loading – try again in a moment.");
+    return;
+  }
+
+  setStatus(
+    station
+      ? `Looking for a random address in ${station.name}'s area…`
+      : "Looking for a random address in Decatur…"
+  );
 
   try {
-    const a = await randomDecaturAddress(station);
-    addressSpan.textContent = a.label;
+    const addrInfo = await getRandomDecaturAddressForStation(station);
+    addressSpan.textContent = addrInfo.label;
     setStatus("Tap the map where you think this address is.");
 
-    actualMarker = L.marker([a.lat, a.lon], { opacity: 0 }).addTo(map);
-
-    map.setView([a.lat, a.lon], 15);
+    actualMarker = L.marker([addrInfo.lat, addrInfo.lon], { opacity: 0 }).addTo(
+      map
+    );
+    map.setView([addrInfo.lat, addrInfo.lon], 15);
 
     clickHandler = (e) => {
       if (guessMarker) map.removeLayer(guessMarker);
@@ -202,43 +383,45 @@ async function startDrill() {
 
       actualMarker.setOpacity(1);
 
-      const d = turf.distance(
+      const distMeters = turf.distance(
         turf.point([e.latlng.lng, e.latlng.lat]),
-        turf.point([a.lon, a.lat]),
+        turf.point([addrInfo.lon, addrInfo.lat]),
         { units: "meters" }
       );
+      const distFeet = feet(distMeters);
 
-      const f = feet(d);
-      let msg =
-        f < 300
-          ? `🔥 Awesome! Only ${f.toFixed(0)} ft away.`
-          : f < 1000
-          ? `👍 Not bad — ${f.toFixed(0)} ft away.`
-          : `😬 ${f.toFixed(0)} ft away. Keep practicing.`;
+      let msg;
+      if (distFeet < 300) {
+        msg = `🔥 Awesome! Only ${distFeet.toFixed(0)} ft away.`;
+      } else if (distFeet < 1000) {
+        msg = `👍 Not bad — ${distFeet.toFixed(0)} ft away.`;
+      } else {
+        msg = `😬 ${distFeet.toFixed(0)} ft away. Keep practicing.`;
+      }
 
-      actualMarker.bindPopup(`<b>${a.label}</b><br>${msg}`).openPopup();
+      actualMarker
+        .bindPopup(`<b>${addrInfo.label}</b><br>${msg}`)
+        .openPopup();
 
+      const group = L.featureGroup([guessMarker, actualMarker]);
+      map.fitBounds(group.getBounds().pad(0.5));
+
+      setStatus('Drill complete. Tap "New Drill" to try another address.');
       map.off("click", clickHandler);
+      clickHandler = null;
     };
 
     map.on("click", clickHandler);
   } catch (err) {
     console.error(err);
-    setStatus("Couldn't find a valid address — try again.");
+    setStatus("Couldn't find a valid address this time. Try again.");
   }
 }
 
 // -------------------------------------------
-// UI EVENTS
+// UI WIRES
 // -------------------------------------------
-newDrillBtn.addEventListener("click", startDrill);
-
-// Street name toggle
-streetNamesCheckbox.addEventListener("change", () => {
-  streetNamesCheckbox.checked
-    ? labelOverlay.addTo(map)
-    : map.removeLayer(labelOverlay);
-});
+newDrillBtn.addEventListener("click", startNewDrill);
 
 // Basemap toggle
 basemapSelect.addEventListener("change", () => {
@@ -248,5 +431,20 @@ basemapSelect.addEventListener("change", () => {
   currentBase.addTo(map);
 });
 
-// Initial status
-setStatus("Ready");
+// Street names toggle
+streetNamesCheckbox.addEventListener("change", () => {
+  if (streetNamesCheckbox.checked) {
+    labelOverlay.addTo(map);
+  } else {
+    map.removeLayer(labelOverlay);
+  }
+});
+
+// Initial status & station init
+setStatus("Geocoding stations…");
+initStations().catch((e) => {
+  console.error("Error during station init", e);
+  setStatus(
+    "Error loading station locations. You can still try drills, but markers may be off."
+  );
+});
