@@ -5,7 +5,9 @@
 // DOM references
 const newDrillBtn = document.getElementById("new-drill");
 const stationSelect = document.getElementById("station-select");
-const basemapSelect = document.getElementById("basemap-select");
+const basemapSelect = documentElementById
+  ? document.getElementById("basemap-select")
+  : document.getElementById("basemap-select");
 const streetNamesCheckbox = document.getElementById("toggle-street-names");
 const addressSpan = document.getElementById("address");
 const statusSpan = document.getElementById("status");
@@ -25,39 +27,55 @@ const map = L.map("map", {
   maxBoundsViscosity: 0.8,
 });
 
-// Road base (Carto)
+// Esri World Street Map – solid, Google-like streets
 const roadBase = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
   {
     maxZoom: 19,
     minZoom: 11,
+    attribution: "Tiles © Esri"
   }
 );
 
-// Satellite base (Esri imagery)
+// Esri World Imagery – satellite
 const satelliteBase = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   {
     maxZoom: 19,
     minZoom: 11,
+    attribution:
+      "Tiles © Esri — Source: Esri, Earthstar Geographics, " +
+      "CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community"
   }
 );
 
-// Labels overlay (street names)
+// Label overlay for SATELLITE ONLY (Carto labels)
 const labelOverlay = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+  "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  {
+    attribution: ""
+  }
 );
 
-// Start with road + labels
+// Start with road view (Esri Streets). No extra label overlay.
 let currentBase = roadBase;
 currentBase.addTo(map);
-labelOverlay.addTo(map);
 
 // -------------------------------------------
 // FIRE STATIONS – ADDRESSES & COLORS
 // -------------------------------------------
-// We’ll geocode these at startup so markers sit on real buildings.
 
+const stationColors = {
+  "1": "#ff5555",
+  "2": "#ff9955",
+  "3": "#ffee55",
+  "4": "#55ff55",
+  "5": "#55ddff",
+  "6": "#9977ff",
+  "7": "#ff77dd",
+};
+
+// We geocode these so markers actually sit on the real buildings
 const stations = [
   {
     id: "1",
@@ -107,8 +125,9 @@ let stationAreasById = {}; // id -> GeoJSON polygon
 let stationMarkers = [];
 
 // -------------------------------------------
-// GEOCODING HELPERS (Nominatim)
+// GEOCODING (Nominatim)
 // -------------------------------------------
+
 async function geocodeAddress(addr) {
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", addr);
@@ -135,8 +154,9 @@ async function geocodeAddress(addr) {
 }
 
 // -------------------------------------------
-// INIT STATIONS: GEOCODE, ADD MARKERS, MAKE POLYGONS
+// INITIALIZE STATIONS: GEOCODE, MARKERS, POLYGONS
 // -------------------------------------------
+
 async function initStations() {
   setStatus("Geocoding fire station addresses…");
 
@@ -147,14 +167,14 @@ async function initStations() {
       if (coords) {
         s.coords = coords;
       } else {
-        console.warn("Could not geocode", s.name, "– will fall back later");
+        console.warn("Could not geocode", s.name, "– using fallback near center");
       }
     } catch (err) {
       console.error("Geocode failed for", s.name, err);
     }
   }
 
-  // Fallback: if any station failed, give it approximate coords near city center
+  // Fallback for any station with no coords
   stations.forEach((s, idx) => {
     if (!s.coords) {
       const baseLat = 39.8425;
@@ -173,7 +193,7 @@ async function initStations() {
     stationMarkers.push(marker);
   });
 
-  // 3) Build Voronoi polygons = “station areas”
+  // 3) Build Voronoi polygons = rough “first-due” areas
   buildStationVoronoi();
 
   setStatus(
@@ -182,14 +202,12 @@ async function initStations() {
 }
 
 function buildStationVoronoi() {
-  // Build Turf FeatureCollection of station points
   const ptFeatures = stations.map((s) =>
     turf.point([s.coords[1], s.coords[0]], {
       id: s.id,
       name: s.name,
     })
   );
-
   const fc = turf.featureCollection(ptFeatures);
 
   const bbox = [
@@ -206,7 +224,6 @@ function buildStationVoronoi() {
     return;
   }
 
-  // Clear any old areas
   stationAreasById = {};
 
   voronoi.features.forEach((poly) => {
@@ -214,10 +231,16 @@ function buildStationVoronoi() {
     const id = poly.properties.id;
     const color = stationColors[id] || "#999";
 
-    // Store GeoJSON polygon
+    const cityPoly = turf.bboxPolygon(bbox);
+    let clipped;
+    try {
+      clipped = turf.intersect(poly, cityPoly) || poly;
+    } catch {
+      clipped = poly;
+    }
+
     stationAreasById[id] = clipped;
 
-    // Add to Leaflet with color
     L.geoJSON(clipped, {
       style: {
         color: color,
@@ -232,6 +255,7 @@ function buildStationVoronoi() {
 // -------------------------------------------
 // RANDOM ADDRESS HELPERS
 // -------------------------------------------
+
 function setStatus(msg) {
   statusSpan.textContent = msg;
 }
@@ -289,7 +313,6 @@ async function getRandomDecaturAddressForStation(station) {
 
     const point = turf.point([lon, lat]);
 
-    // If we have a polygon for this station, require the point to fall inside
     if (areaPoly && !turf.booleanPointInPolygon(point, areaPoly)) continue;
 
     const data = await reverseGeocode(lat, lon);
@@ -403,22 +426,40 @@ async function startNewDrill() {
 // -------------------------------------------
 // UI WIRES
 // -------------------------------------------
+
 newDrillBtn.addEventListener("click", startNewDrill);
 
-// Basemap toggle
+// Basemap toggle: Road (Esri Streets) vs Satellite (Esri Imagery)
 basemapSelect.addEventListener("change", () => {
   map.removeLayer(currentBase);
-  currentBase =
-    basemapSelect.value === "satellite" ? satelliteBase : roadBase;
-  currentBase.addTo(map);
+
+  if (basemapSelect.value === "satellite") {
+    currentBase = satelliteBase;
+    currentBase.addTo(map);
+
+    // In satellite mode, streetNamesCheckbox controls label overlay
+    if (streetNamesCheckbox.checked) {
+      labelOverlay.addTo(map);
+    } else {
+      map.removeLayer(labelOverlay);
+    }
+  } else {
+    // Road mode: Esri Streets already has labels baked in
+    currentBase = roadBase;
+    currentBase.addTo(map);
+    // Remove label overlay if it was on
+    map.removeLayer(labelOverlay);
+  }
 });
 
-// Street names toggle
+// Street names toggle – only meaningful in Satellite mode
 streetNamesCheckbox.addEventListener("change", () => {
-  if (streetNamesCheckbox.checked) {
-    labelOverlay.addTo(map);
-  } else {
-    map.removeLayer(labelOverlay);
+  if (basemapSelect.value === "satellite") {
+    if (streetNamesCheckbox.checked) {
+      labelOverlay.addTo(map);
+    } else {
+      map.removeLayer(labelOverlay);
+    }
   }
 });
 
