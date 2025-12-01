@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Decatur Drill – Address Guess Trainer</title>
+  <title>Decatur Address Drill</title>
 
   <!-- Leaflet CSS -->
   <link
@@ -16,12 +16,15 @@
     * {
       box-sizing: border-box;
     }
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       display: flex;
       flex-direction: column;
-      height: 100vh;
     }
     header {
       padding: 0.75rem 1rem;
@@ -45,8 +48,9 @@
       border-bottom: 1px solid #ddd;
       display: flex;
       flex-wrap: wrap;
-      gap: 0.75rem;
+      gap: 0.5rem;
       align-items: center;
+      font-size: 0.9rem;
     }
     .controls button {
       padding: 0.4rem 0.8rem;
@@ -70,19 +74,45 @@
       flex: 1;
       width: 100%;
     }
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Decatur Address Drill</h1>
-    <small>Click “New Drill”, then click on the map where you think the address is.</small>
+    <small>Pick a station, choose map labels, then click “New Drill”.</small>
   </header>
 
   <div class="controls">
     <button id="new-drill-btn">New Drill</button>
+
+    <label>
+      Station:
+      <select id="station-select">
+        <option value="any">Any Station</option>
+        <option value="1">Station 1 – HQ</option>
+        <option value="2">Station 2</option>
+        <option value="3">Station 3</option>
+        <option value="4">Station 4</option>
+        <option value="5">Station 5</option>
+        <option value="6">Station 6</option>
+        <option value="7">Station 7</option>
+      </select>
+    </label>
+
+    <label>
+      <input type="checkbox" id="toggle-labels" checked />
+      Show street names
+    </label>
+
     <div>
       Address: <span id="current-address">None yet – click “New Drill”</span>
     </div>
+
     <div id="message"></div>
   </div>
 
