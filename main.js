@@ -1,6 +1,6 @@
-// Decatur drill v2
+// Decatur Address Drill – main.js
 // - On "New Drill", pick a random coordinate around Decatur
-// - Reverse-geocode it to a real address
+// - Reverse-geocode it to a real address WITH a house number
 // - Make sure it's actually in Decatur, IL
 // - User clicks where they think it is; app scores their guess
 
@@ -45,9 +45,9 @@ function randomPointInBbox(bbox) {
 
 /**
  * Ask Nominatim (OpenStreetMap geocoder) for the address at a lat/lon.
- * Returns null if no good address / not Decatur.
+ * Returns null if no good address / not Decatur / no house number.
  *
- * NOTE: For heavier use, you should get your own geocoding API/key.
+ * NOTE: For real use, replace the email in User-Agent with YOUR email.
  */
 async function reverseGeocodeDecatur(lat, lon) {
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
@@ -60,7 +60,6 @@ async function reverseGeocodeDecatur(lat, lon) {
 
   const resp = await fetch(url.toString(), {
     headers: {
-      // IMPORTANT: replace with your own contact info to be nice to the service
       "User-Agent": "DecaturFireDrillApp/1.0 (youremail@example.com)",
       "Accept": "application/json",
     },
@@ -87,7 +86,7 @@ async function reverseGeocodeDecatur(lat, lon) {
     return null;
   }
 
-  // Build a label like "123 Main St, Decatur, IL"
+  // REQUIRE a proper house number + street
   const house = addr.house_number || "";
   const road =
     addr.road ||
@@ -95,10 +94,17 @@ async function reverseGeocodeDecatur(lat, lon) {
     addr.street ||
     addr.neighbourhood ||
     "";
-  const state = addr.state || "IL";
-  const label = `${house} ${road}, Decatur, ${state}`.replace(/\s+/g, " ").trim();
 
-  // Nominatim returns strings; convert to numbers
+  if (!house || !road) {
+    // No specific address → skip this result
+    return null;
+  }
+
+  const state = addr.state || "IL";
+  const label = `${house} ${road}, Decatur, ${state}`
+    .replace(/\s+/g, " ")
+    .trim();
+
   const latNum = Number(data.lat);
   const lonNum = Number(data.lon);
 
@@ -116,11 +122,10 @@ async function reverseGeocodeDecatur(lat, lon) {
  * Get a random address INSIDE Decatur by:
  * - picking a random point in a bbox
  * - reverse geocoding it
- * - checking it's in Decatur
+ * - requiring house number + street
  */
-async function getRandomAddressInDecatur(maxTries = 15) {
+async function getRandomAddressInDecatur(maxTries = 40) {
   // Bounding box that covers Decatur (rough but safe).
-  // south, west, north, east
   const bbox = {
     south: 39.80,
     west: -88.99,
@@ -134,10 +139,11 @@ async function getRandomAddressInDecatur(maxTries = 15) {
     if (result) {
       return result;
     }
-    // If result is null (no house number, outside Decatur, etc.), try again.
   }
 
-  throw new Error("Could not find a random Decatur address after several tries.");
+  throw new Error(
+    "Could not find a random Decatur address with a house number after several tries."
+  );
 }
 
 // New drill: fetch a random Decatur address
@@ -160,7 +166,7 @@ async function startNewDrill() {
     setMessage("Drill started. Click on the map where you think this address is.");
     drillActive = true;
 
-    // Optional: recenter map around Decatur center
+    // Recenter map around Decatur center
     map.setView([39.842468, -88.953148], 13);
   } catch (err) {
     currentTarget = null;
@@ -172,7 +178,7 @@ async function startNewDrill() {
 // Handle map clicks: user guess
 map.on("click", (e) => {
   if (!drillActive || !currentTarget) {
-    setMessage("Click “New Drill” to start.", true);
+    setMessage('Click "New Drill" to start.', true);
     return;
   }
 
@@ -243,4 +249,6 @@ newDrillBtn.addEventListener("click", () => {
 });
 
 // Initial message
-setMessage("Click “New Drill” to generate a random Decatur address and start the drill.");
+setMessage(
+  'Click "New Drill" to generate a random Decatur address with a house number and start the drill.'
+);
