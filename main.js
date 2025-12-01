@@ -1,411 +1,493 @@
-// Decatur Address Drill – main.js
-// - Carto basemap (reliable) with a labels / no-labels toggle
-// - All 7 fire stations are geocoded from their real addresses
-// - Station selector biases random address near chosen station (fallback = whole city)
-// - On "New Drill", gets a random real address in Decatur with a house number
-// - User clicks where they think it is; app scores their guess
+// main.js
+// Decatur Address Drill
 
-// ------------ DOM ELEMENTS ------------
-const newDrillBtn = document.getElementById("new-drill-btn");
-const currentAddressSpan = document.getElementById("current-address");
-const messageDiv = document.getElementById("message");
-const stationSelect = document.getElementById("station-select");
-const labelsCheckbox = document.getElementById("toggle-labels");
-
-// Rough center of Decatur, IL
-const map = L.map("map").setView([39.842468, -88.953148], 13);
-
-// ------------ BASE MAP LAYERS (Carto) ------------
-// Light map with labels (street names ON)
-const cartoWithLabels = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-  {
-    maxZoom: 19,
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-      '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-  }
+// ----- Map / bounds setup -----
+const decaturBounds = L.latLngBounds(
+  [39.80, -89.05], // SW
+  [39.90, -88.85]  // NE
 );
 
-// Same style but NO labels (street names OFF)
-const cartoNoLabels = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-  {
-    maxZoom: 19,
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-      '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-  }
-);
-
-// Start with labels visible
-let currentBaseLayer = cartoWithLabels;
-currentBaseLayer.addTo(map);
-
-// Checkbox to toggle labels on/off
-labelsCheckbox.addEventListener("change", () => {
-  const wantLabels = labelsCheckbox.checked;
-
-  if (wantLabels) {
-    if (map.hasLayer(cartoNoLabels)) map.removeLayer(cartoNoLabels);
-    if (!map.hasLayer(cartoWithLabels)) cartoWithLabels.addTo(map);
-    currentBaseLayer = cartoWithLabels;
-  } else {
-    if (map.hasLayer(cartoWithLabels)) map.removeLayer(cartoWithLabels);
-    if (!map.hasLayer(cartoNoLabels)) cartoNoLabels.addTo(map);
-    currentBaseLayer = cartoNoLabels;
-  }
+// Base map & layers
+const map = L.map('map', {
+  center: [39.8425, -88.9531],
+  zoom: 12,
+  maxBounds: decaturBounds,
+  maxBoundsViscosity: 0.8,
 });
 
-// ------------ FIRE STATIONS (GEOCODED BY ADDRESS) ------------
+// Road (no labels) and satellite base layers
+const cartoBase = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+  {
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> ' +
+      'tiles &copy; <a href="https://carto.com/">CARTO</a>',
+    minZoom: 11,
+    maxZoom: 19,
+  }
+);
+
+const esriSatellite = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {
+    attribution:
+      'Tiles &copy; Esri &mdash; Source: Esri, Earthstar Geographics, ' +
+      'CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+    minZoom: 11,
+    maxZoom: 19,
+  }
+);
+
+// Label overlay (only labels, no fill)
+const cartoLabels = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
+  {
+    attribution: '',
+    pane: 'overlayPane',
+  }
+);
+
+// Start with road + labels
+let currentBaseLayer = cartoBase;
+currentBaseLayer.addTo(map);
+cartoLabels.addTo(map);
+
+// Slight grayscale filter so streets pop
+const mapContainer = document.getElementById('map');
+if (mapContainer) {
+  mapContainer.style.filter = 'grayscale(0.8) contrast(1.1)';
+}
+
+// ----- DOM elements -----
+const newDrillBtn = document.getElementById('new-drill');
+const addressSpan = document.getElementById('address');
+const statusSpan = document.getElementById('status');
+const stationSelect = document.getElementById('station-select');
+const streetNamesCheckbox = document.getElementById('toggle-street-names');
+const basemapSelect = document.getElementById('basemap-select');
+const zonesCheckbox = document.getElementById('toggle-zones');
+
+// ----- Nominatim config -----
+const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
+
+// Helper: fetch wrapper for Nominatim
+async function nominatimFetch(url) {
+  const res = await fetch(url, {
+    headers: {
+      'Accept-Language': 'en',
+    },
+  });
+  if (!res.ok) throw new Error('Nominatim error ' + res.status);
+  return res.json();
+}
+
+// ----- Fire stations -----
+// NOTE: coords below are FALLBACK approx values inside Decatur.
+// The app will try to geocode the addresses and overwrite these.
 const fireStations = [
   {
-    id: "1",
-    name: "Station 1 – Headquarters",
-    address: "1415 North Water Street, Decatur IL 62526",
-    coords: null,
+    id: '1',
+    name: 'Station 1 – Headquarters',
+    address: '1415 North Water Street, Decatur, IL 62526',
+    // approx north-central
+    coords: [39.8635, -88.9510],
   },
   {
-    id: "2",
-    name: "Station 2",
-    address: "2707 East William Street, Decatur IL 62526",
-    coords: null,
+    id: '2',
+    name: 'Station 2',
+    address: '2707 East William Street, Decatur, IL 62526',
+    // approx east side
+    coords: [39.8355, -88.9185],
   },
   {
-    id: "3",
-    name: "Station 3",
-    address: "855 North Fairview Avenue, Decatur IL 62522",
-    coords: null,
+    id: '3',
+    name: 'Station 3',
+    address: '855 North Fairview Avenue, Decatur, IL 62522',
+    // approx west-central
+    coords: [39.8480, -88.9900],
   },
   {
-    id: "4",
-    name: "Station 4",
-    address: "2760 North 22nd Street, Decatur IL 62526",
-    coords: null,
+    id: '4',
+    name: 'Station 4',
+    address: '2760 North 22nd Street, Decatur, IL 62526',
+    // approx NE
+    coords: [39.8770, -88.9300],
   },
   {
-    id: "5",
-    name: "Station 5",
-    address: "3808 Greenridge Drive, Decatur IL 62526",
-    coords: null,
+    id: '5',
+    name: 'Station 5',
+    address: '3808 Greenridge Drive, Decatur, IL 62526',
+    // approx NW
+    coords: [39.8850, -88.9990],
   },
   {
-    id: "6",
-    name: "Station 6",
-    address: "1880 South US Route BUS 51, Decatur IL",
-    coords: null,
+    id: '6',
+    name: 'Station 6',
+    // tweak address wording for better geocode
+    address: '1880 S State Route 51, Decatur, IL 62521',
+    // approx south-central on 51
+    coords: [39.8040, -88.9560],
   },
   {
-    id: "7",
-    name: "Station 7",
-    address: "3540 East Chestnut Avenue, Decatur IL",
-    coords: null,
+    id: '7',
+    name: 'Station 7',
+    address: '3540 E Chestnut Ave, Decatur, IL 62521',
+    // approx far east / SE
+    coords: [39.8110, -88.8760],
   },
 ];
 
+let stationMarkers = [];
+let stationZoneLayers = {}; // id -> L.Circle
+
 let stationsReady = false;
 
-function setMessage(text, isError = false) {
-  messageDiv.textContent = text;
-  messageDiv.style.color = isError ? "darkred" : "#333";
-}
-
-function metersToFeet(m) {
-  return m * 3.28084;
-}
-
-// Forward geocode with Nominatim
+// ----- Geocoding helpers -----
 async function geocodeAddress(address) {
-  const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("limit", "1");
-  url.searchParams.set("addressdetails", "1");
-  url.searchParams.set("q", address);
-  url.searchParams.set("accept-language", "en");
+  const url =
+    `${NOMINATIM_BASE}/search?` +
+    new URLSearchParams({
+      q: address,
+      format: 'jsonv2',
+      limit: '1',
+      addressdetails: '1',
+      countrycodes: 'us',
+    }).toString();
 
-  const resp = await fetch(url.toString(), {
-    headers: {
-      "User-Agent": "DecaturFireDrillApp/1.0 (youremail@example.com)",
-      "Accept": "application/json",
-    },
-  });
-
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  if (!data || !data[0]) return null;
-
-  const item = data[0];
-  const lat = Number(item.lat);
-  const lon = Number(item.lon);
-  if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
-
-  return [lat, lon];
+  const data = await nominatimFetch(url);
+  if (!data || !data.length) return null;
+  const p = data[0];
+  return [parseFloat(p.lat), parseFloat(p.lon)];
 }
 
-// Geocode stations and add markers
-async function initStations() {
-  setMessage("Loading station locations...");
-  for (const station of fireStations) {
-    try {
-      const coords = await geocodeAddress(station.address);
-      if (coords) {
-        station.coords = coords;
+async function reverseGeocode(lat, lon) {
+  const url =
+    `${NOMINATIM_BASE}/reverse?` +
+    new URLSearchParams({
+      lat: lat.toString(),
+      lon: lon.toString(),
+      format: 'jsonv2',
+      addressdetails: '1',
+    }).toString();
 
-        L.marker(coords, {
-          icon: L.icon({
-            iconUrl:
-              "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-            shadowUrl:
-              "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-          }),
-        })
-          .addTo(map)
-          .bindPopup(`${station.name}<br>${station.address}`);
+  const data = await nominatimFetch(url);
+  return data;
+}
+
+// ----- Station markers / areas -----
+async function initStations() {
+  statusSpan.textContent = 'Loading stations...';
+
+  // Clear old markers/zones if re-running
+  stationMarkers.forEach(m => map.removeLayer(m));
+  stationMarkers = [];
+  Object.values(stationZoneLayers).forEach(z => map.removeLayer(z));
+  stationZoneLayers = {};
+
+  for (const station of fireStations) {
+    const fallback = station.coords.slice();
+
+    try {
+      const geocoded = await geocodeAddress(station.address);
+      if (geocoded) {
+        station.coords = geocoded;
       } else {
-        console.warn("Could not geocode station:", station);
+        station.coords = fallback;
+        console.warn('Using fallback coords for', station.name);
       }
-    } catch (e) {
-      console.error("Error geocoding station:", station, e);
+    } catch (err) {
+      station.coords = fallback;
+      console.warn('Error geocoding', station.name, err);
+    }
+
+    const marker = L.marker(station.coords, {
+      title: station.name,
+    }).addTo(map);
+
+    marker.bindPopup(
+      `<strong>${station.name}</strong><br>${station.address}`
+    );
+
+    stationMarkers.push(marker);
+
+    // Simple shaded "boundary" – circle around the station (will refine later)
+    const zone = L.circle(station.coords, {
+      radius: 2500, // meters – tweak later
+      color: '#666',
+      weight: 1,
+      fillColor: '#ffaa00',
+      fillOpacity: 0.08,
+    });
+
+    stationZoneLayers[station.id] = zone;
+    if (zonesCheckbox && zonesCheckbox.checked) {
+      zone.addTo(map);
     }
   }
+
   stationsReady = true;
-  setMessage(
-    'Stations loaded. Choose a station (or "Any"), decide if you want labels, then click "New Drill".'
-  );
+  statusSpan.textContent =
+    'Pick a station, choose map labels/view, then click “New Drill”.';
 }
 
-initStations();
-
-// ------------ RANDOM ADDRESS / DRILL LOGIC ------------
-
-let currentTarget = null; // { label, coords: [lat, lon] }
-let targetMarker = null;
-let guessMarker = null;
-let drillActive = false;
-
-function randomPointInBbox(bbox) {
-  const lat = bbox.south + Math.random() * (bbox.north - bbox.south);
-  const lon = bbox.west + Math.random() * (bbox.east - bbox.west);
-  return { lat, lon };
+// ----- Random point helpers -----
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
 }
 
-function getStationBbox(stationId) {
-  const cityBbox = {
-    south: 39.80,
-    west: -88.99,
-    north: 39.89,
-    east: -88.88,
-  };
-
-  if (stationId === "any") return cityBbox;
-
-  const station = fireStations.find((s) => s.id === stationId);
-  if (!station || !station.coords) return cityBbox;
-
+// A loose “box” around a station for random address selection
+function getStationBbox(station) {
   const [lat, lon] = station.coords;
-  const latDelta = 0.02;
-  const lonDelta = 0.02;
-
+  const dLat = 0.03; // ~3 km north/south
+  const dLon = 0.04; // ~3–4 km east/west (adjusted for longitude)
   return {
-    south: lat - latDelta,
-    north: lat + latDelta,
-    west: lon - lonDelta,
-    east: lon + lonDelta,
+    minLat: lat - dLat,
+    maxLat: lat + dLat,
+    minLon: lon - dLon,
+    maxLon: lon + dLon,
   };
 }
 
-async function reverseGeocodeDecatur(lat, lon) {
-  const url = new URL("https://nominatim.openstreetmap.org/reverse");
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("lat", lat);
-  url.searchParams.set("lon", lon);
-  url.searchParams.set("addressdetails", "1");
-  url.searchParams.set("zoom", "18");
-  url.searchParams.set("accept-language", "en");
-
-  const resp = await fetch(url.toString(), {
-    headers: {
-      "User-Agent": "DecaturFireDrillApp/1.0 (youremail@example.com)",
-      "Accept": "application/json",
-    },
-  });
-
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  if (!data.address) return null;
-
-  const addr = data.address;
-  const cityName =
-    addr.city ||
-    addr.town ||
-    addr.village ||
-    addr.municipality ||
-    addr.county ||
-    "";
-
-  if (cityName.toLowerCase() !== "decatur") return null;
-
-  const house = addr.house_number || "";
-  const road =
-    addr.road ||
-    addr.residential ||
-    addr.street ||
-    addr.neighbourhood ||
-    "";
-
-  if (!house || !road) return null;
-
-  const state = addr.state || "IL";
-  const label = `${house} ${road}, Decatur, ${state}`
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!/\d/.test(label)) return null;
-
-  const latNum = Number(data.lat);
-  const lonNum = Number(data.lon);
-  if (Number.isNaN(latNum) || Number.isNaN(lonNum)) return null;
-
-  return {
-    label,
-    coords: [latNum, lonNum],
-  };
+function pickStationForDrill() {
+  const choice = stationSelect.value;
+  if (choice === 'any') {
+    const idx = Math.floor(Math.random() * fireStations.length);
+    return fireStations[idx];
+  }
+  return fireStations.find(s => s.id === choice) || fireStations[0];
 }
 
-async function getRandomAddressInDecatur(maxTries = 40, stationId = "any") {
-  const cityBbox = {
-    south: 39.80,
-    west: -88.99,
-    north: 39.89,
-    east: -88.88,
-  };
+// ----- Drill state -----
+let currentActualMarker = null;
+let currentGuessMarker = null;
+let currentClickHandler = null;
 
-  const stationBbox = getStationBbox(stationId);
-  const halfTries = Math.floor(maxTries / 2);
+// Clean up old markers / handler
+function resetDrillState() {
+  if (currentActualMarker) {
+    map.removeLayer(currentActualMarker);
+    currentActualMarker = null;
+  }
+  if (currentGuessMarker) {
+    map.removeLayer(currentGuessMarker);
+    currentGuessMarker = null;
+  }
+  if (currentClickHandler) {
+    map.off('click', currentClickHandler);
+    currentClickHandler = null;
+  }
+}
 
-  for (let i = 0; i < halfTries; i++) {
-    const { lat, lon } = randomPointInBbox(stationBbox);
-    const result = await reverseGeocodeDecatur(lat, lon);
-    if (result) return result;
+// Turn Nominatim address into “123 Main St, Decatur, Illinois”
+function formatNiceAddress(addr) {
+  const parts = [];
+  if (addr.house_number && addr.road) {
+    parts.push(`${addr.house_number} ${addr.road}`);
+  } else if (addr.road) {
+    parts.push(addr.road);
+  }
+  if (addr.city || addr.town || addr.village) {
+    parts.push(addr.city || addr.town || addr.village);
+  }
+  if (addr.state) {
+    parts.push(addr.state);
+  }
+  return parts.join(', ');
+}
+
+// Generate a random valid address within a station area
+async function getRandomAddressNearStation(station) {
+  const bbox = getStationBbox(station);
+
+  const maxTries = 20;
+  for (let i = 0; i < maxTries; i++) {
+    const lat = randomBetween(bbox.minLat, bbox.maxLat);
+    const lon = randomBetween(bbox.minLon, bbox.maxLon);
+
+    if (!decaturBounds.contains([lat, lon])) continue;
+
+    try {
+      const data = await reverseGeocode(lat, lon);
+      const addr = data.address || {};
+
+      // Require: house number, road, and Decatur
+      const cityName = addr.city || addr.town || addr.village || '';
+      if (!addr.house_number || !addr.road) continue;
+      if (cityName.toLowerCase() !== 'decatur') continue;
+
+      const niceAddress = formatNiceAddress(addr);
+
+      return {
+        lat,
+        lon,
+        niceAddress,
+        raw: addr,
+      };
+    } catch (err) {
+      console.warn('Reverse geocode failed, retrying...', err);
+    }
   }
 
-  for (let i = halfTries; i < maxTries; i++) {
-    const { lat, lon } = randomPointInBbox(cityBbox);
-    const result = await reverseGeocodeDecatur(lat, lon);
-    if (result) return result;
-  }
-
-  throw new Error(
-    "Could not find a random Decatur address with a house number after several tries."
-  );
+  throw new Error('Could not find a valid address after several tries.');
 }
 
+// Start a new drill
 async function startNewDrill() {
-  if (targetMarker) {
-    map.removeLayer(targetMarker);
-    targetMarker = null;
-  }
-  if (guessMarker) {
-    map.removeLayer(guessMarker);
-    guessMarker = null;
-  }
-
-  const selectedStationId = stationSelect?.value || "any";
-
-  if (!stationsReady && selectedStationId !== "any") {
-    setMessage(
-      "Station locations are still loading; using whole-city area for now."
-    );
-  }
-
-  setMessage(
-    selectedStationId === "any"
-      ? "Getting a random address inside Decatur..."
-      : `Getting a random address near ${stationSelect.options[stationSelect.selectedIndex].text}...`
-  );
-
-  try {
-    currentTarget = await getRandomAddressInDecatur(40, selectedStationId);
-    currentAddressSpan.textContent = currentTarget.label;
-    setMessage("Drill started. Click on the map where you think this address is.");
-    drillActive = true;
-
-    map.setView([39.842468, -88.953148], 13);
-  } catch (err) {
-    currentTarget = null;
-    drillActive = false;
-    setMessage("Error getting address: " + err.message, true);
-  }
-}
-
-map.on("click", (e) => {
-  if (!drillActive || !currentTarget) {
-    setMessage('Click "New Drill" to start.', true);
+  if (!stationsReady) {
+    statusSpan.textContent = 'Still loading stations – try again in a moment.';
     return;
   }
 
-  const guessLatLng = e.latlng;
+  resetDrillState();
 
-  if (guessMarker) {
-    guessMarker.setLatLng(guessLatLng);
-  } else {
-    guessMarker = L.marker(guessLatLng, { title: "Your guess" }).addTo(map);
+  const station = pickStationForDrill();
+  statusSpan.textContent = `Getting a random address near ${station.name}...`;
+
+  try {
+    const info = await getRandomAddressNearStation(station);
+
+    addressSpan.textContent = info.niceAddress || 'Unknown address';
+    statusSpan.textContent =
+      'Drill started. Click on the map where you think this address is.';
+
+    currentActualMarker = L.marker([info.lat, info.lon], {
+      opacity: 0, // hidden until after guess
+    }).addTo(map);
+
+    // Zoom to that general area
+    map.setView([info.lat, info.lon], 15);
+
+    // One-time click handler for the guess
+    currentClickHandler = function (e) {
+      if (currentGuessMarker) {
+        map.removeLayer(currentGuessMarker);
+      }
+
+      currentGuessMarker = L.marker(e.latlng, {
+        icon: L.icon({
+          iconUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          shadowUrl:
+            'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        }),
+      }).addTo(map);
+
+      // Reveal actual marker
+      currentActualMarker.setOpacity(1);
+
+      // Distance in meters
+      const from = turf.point([e.latlng.lng, e.latlng.lat]);
+      const to = turf.point([info.lon, info.lat]);
+      const distKm = turf.distance(from, to, { units: 'kilometers' });
+      const distFeet = distKm * 3280.84;
+
+      let resultText;
+      if (distFeet < 300) {
+        resultText = `🔥 Nice! You were only about ${distFeet.toFixed(
+          0
+        )} feet from the address.`;
+      } else if (distFeet < 1000) {
+        resultText = `👍 Pretty good. You were about ${distFeet.toFixed(
+          0
+        )} feet away.`;
+      } else {
+        resultText = `😬 Needs work. You were about ${distFeet.toFixed(
+          0
+        )} feet from the actual address.`;
+      }
+
+      const popupHtml = `
+        <div>
+          <div><strong>Actual:</strong> ${info.niceAddress}</div>
+          <div style="margin-top:4px;">${resultText}</div>
+        </div>
+      `;
+
+      currentActualMarker.bindPopup(popupHtml).openPopup();
+
+      statusSpan.textContent =
+        'Drill complete. Click “New Drill” to try another address.';
+
+      // Only allow one guess
+      map.off('click', currentClickHandler);
+      currentClickHandler = null;
+    };
+
+    map.on('click', currentClickHandler);
+  } catch (err) {
+    console.error(err);
+    statusSpan.textContent =
+      'Could not find a valid address this time. Click “New Drill” to try again.';
+    addressSpan.textContent = 'None yet – click “New Drill”';
   }
+}
 
-  const guessPoint = turf.point([guessLatLng.lng, guessLatLng.lat]);
-  const targetPoint = turf.point([
-    currentTarget.coords[1],
-    currentTarget.coords[0],
-  ]);
+// ----- UI wiring -----
 
-  const distanceMeters = turf.distance(guessPoint, targetPoint, {
-    units: "meters",
+// New Drill button
+if (newDrillBtn) {
+  newDrillBtn.addEventListener('click', () => {
+    startNewDrill();
   });
-  const distanceFeet = metersToFeet(distanceMeters);
+}
 
-  if (!targetMarker) {
-    targetMarker = L.marker(
-      [currentTarget.coords[0], currentTarget.coords[1]],
-      { title: "Actual location" }
-    )
-      .addTo(map)
-      .bindPopup(`Actual: ${currentTarget.label}`)
-      .openPopup();
-  } else {
-    targetMarker.setLatLng([
-      currentTarget.coords[0],
-      currentTarget.coords[1],
-    ]);
-  }
+// Street names toggle = labels overlay on/off
+if (streetNamesCheckbox) {
+  streetNamesCheckbox.addEventListener('change', () => {
+    if (streetNamesCheckbox.checked) {
+      cartoLabels.addTo(map);
+    } else {
+      map.removeLayer(cartoLabels);
+    }
+  });
+}
 
-  const group = L.featureGroup([guessMarker, targetMarker]);
-  map.fitBounds(group.getBounds().pad(0.5));
+// Basemap style select: road vs satellite
+if (basemapSelect) {
+  basemapSelect.addEventListener('change', () => {
+    const style = basemapSelect.value;
+    map.removeLayer(currentBaseLayer);
+    if (style === 'satellite') {
+      currentBaseLayer = esriSatellite;
+    } else {
+      currentBaseLayer = cartoBase;
+    }
+    currentBaseLayer.addTo(map);
+  });
+}
 
-  let rating;
-  if (distanceFeet < 150) {
-    rating = "🔥 Nailed it!";
-  } else if (distanceFeet < 600) {
-    rating = "👍 Close!";
-  } else {
-    rating = "🤔 Needs work.";
-  }
+// Station area shading toggle
+if (zonesCheckbox) {
+  zonesCheckbox.addEventListener('change', () => {
+    const show = zonesCheckbox.checked;
+    Object.values(stationZoneLayers).forEach(zone => {
+      if (show) {
+        zone.addTo(map);
+      } else {
+        map.removeLayer(zone);
+      }
+    });
+  });
+}
 
-  setMessage(
-    `${rating} You were about ${distanceFeet.toFixed(
-      0
-    )} feet (${distanceMeters.toFixed(0)} m) from the actual address.`
-  );
+// Populate station dropdown
+if (stationSelect) {
+  // Keep existing "Any Station" option
+  fireStations.forEach(st => {
+    const opt = document.createElement('option');
+    opt.value = st.id;
+    opt.textContent = st.name;
+    stationSelect.appendChild(opt);
+  });
+}
 
-  drillActive = false;
+// Init
+initStations().catch(err => {
+  console.error('Error initializing stations', err);
+  statusSpan.textContent =
+    'Error loading stations (check console). You can still try drills, but markers may be off.';
 });
-
-newDrillBtn.addEventListener("click", () => {
-  startNewDrill();
-});
-
-setMessage(
-  'Loading stations… then choose a station (or "Any"), decide if you want labels, and click "New Drill".'
-);
