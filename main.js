@@ -1,5 +1,5 @@
 // -------------------------------------------
-// Decatur Address Drill – main.js
+// Decatur Address Drill – Google Maps + Snazzy
 // -------------------------------------------
 
 // DOM references
@@ -13,60 +13,49 @@ const statusSpan = document.getElementById("status");
 // -------------------------------------------
 // MAP SETUP
 // -------------------------------------------
-const decaturBounds = L.latLngBounds(
-  [39.80, -89.05], // SW-ish
-  [39.90, -88.85]  // NE-ish
-);
+let map;
+let geocoder;
 
-const map = L.map("map", {
-  center: [39.8425, -88.9531],
-  zoom: 12,
-  maxBounds: decaturBounds,
-  maxBoundsViscosity: 0.8,
-});
+// Decatur bounding box (lat, lng)
+const decaturBounds = {
+  minLat: 39.80,
+  maxLat: 39.90,
+  minLng: -89.05,
+  maxLng: -88.85,
+};
 
-// Road base with NO labels (Carto)
-const roadBase = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+// Snazzy Maps style: "Map without labels" (ID 24088)
+// https://snazzymaps.com/style/24088/map-without-labels
+// This style hides *all* text and icon labels.
+const NO_LABELS_STYLE = [
   {
-    maxZoom: 19,
-    minZoom: 11,
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-      'contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  }
-);
-
-// Satellite base (Esri imagery)
-const imageryBase = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    featureType: "all",
+    elementType: "labels.text",
+    stylers: [{ visibility: "off" }],
+  },
   {
-    maxZoom: 19,
-    minZoom: 11,
-    attribution:
-      "Tiles © Esri, Maxar, Earthstar Geographics, and the GIS User Community"
-  }
-);
+    featureType: "all",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }],
+  },
+];
 
-// Label overlay (street names) – can be toggled on/off
-const labelOverlay = L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-  {
-    maxZoom: 19,
-    minZoom: 11,
-    attribution: ""
+// Helper to update the current map styling based on checkbox
+function applyMapStyle() {
+  const showStreetNames = streetNamesCheckbox.checked;
+  if (showStreetNames) {
+    // Default Google style with labels
+    map.setOptions({ styles: [] });
+  } else {
+    // Snazzy style: labels off
+    map.setOptions({ styles: NO_LABELS_STYLE });
   }
-);
-
-// Start with road + labels ON
-let currentBase = roadBase;
-currentBase.addTo(map);
-labelOverlay.addTo(map);
+}
 
 // -------------------------------------------
-// STATION DEFINITIONS (hard-coded coords)
+// STATION DATA (hard-coded coords)
 // -------------------------------------------
-const stationColors = {
+const STATION_COLORS = {
   "1": "#ff5555",
   "2": "#ff9955",
   "3": "#ffee55",
@@ -76,118 +65,176 @@ const stationColors = {
   "7": "#ff77dd",
 };
 
-const stations = [
+const STATIONS = [
   {
     id: "1",
     name: "Station 1 – Headquarters",
     address: "1415 N Water Street, Decatur, IL 62526",
-    coords: [39.8654, -88.9519]
+    coords: { lat: 39.8654, lng: -88.9519 },
   },
   {
     id: "2",
     name: "Station 2",
     address: "2707 E William Street, Decatur, IL 62521",
-    coords: [39.84479, -88.91433] // corrected
+    coords: { lat: 39.84479, lng: -88.91433 }, // corrected
   },
   {
     id: "3",
     name: "Station 3",
     address: "855 N Fairview Avenue, Decatur, IL 62526",
-    coords: [39.8526, -88.9804]
+    coords: { lat: 39.8526, lng: -88.9804 },
   },
   {
     id: "4",
     name: "Station 4",
     address: "2760 N 22nd Street, Decatur, IL 62526",
-    coords: [39.8868, -88.9296]
+    coords: { lat: 39.8868, lng: -88.9296 },
   },
   {
     id: "5",
     name: "Station 5",
     address: "3808 Greenridge Drive, Decatur, IL 62526",
-    coords: [39.8953, -88.9458]
+    coords: { lat: 39.8953, lng: -88.9458 },
   },
   {
     id: "6",
     name: "Station 6",
     address: "1880 S US Route BUS 51, Decatur, IL 62521",
-    coords: [39.82031, -88.95992] // corrected
+    coords: { lat: 39.82031, lng: -88.95992 }, // corrected
   },
   {
     id: "7",
     name: "Station 7",
     address: "3540 E Chestnut Avenue, Decatur, IL 62521",
-    coords: [39.82831, -88.87796] // corrected
-  }
+    coords: { lat: 39.82831, lng: -88.87796 }, // corrected
+  },
 ];
 
-let stationAreasById = {};
+let stationAreasById = {}; // id -> Turf polygon feature
 let stationMarkers = [];
+let stationPolygons = [];
 
-// Add markers
-stations.forEach((s) => {
-  const marker = L.marker(s.coords).addTo(map);
-  marker.bindPopup(`<strong>${s.name}</strong><br>${s.address}`);
-  stationMarkers.push(marker);
+// -------------------------------------------
+// INIT MAP
+// -------------------------------------------
+function initMapCore() {
+  // Create map
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 39.8425, lng: -88.9531 },
+    zoom: 12,
+    mapTypeId: "roadmap",
+    styles: [], // start with labels on; Snazzy applied via checkbox
+  });
+
+  geocoder = new google.maps.Geocoder();
+
+  // Add station markers
+  STATIONS.forEach((s) => {
+    const marker = new google.maps.Marker({
+      position: s.coords,
+      map,
+      title: s.name,
+    });
+
+    const info = new google.maps.InfoWindow({
+      content: `<strong>${s.name}</strong><br>${s.address}`,
+    });
+
+    marker.addListener("click", () => {
+      info.open(map, marker);
+    });
+
+    stationMarkers.push(marker);
+  });
+
+  // Build Voronoi station areas and draw polygons
+  buildStationVoronoi();
+
+  // Wire UI events
+  wireUI();
+
+  setStatus('Pick a station, choose map view, then click "New Drill".');
+  applyMapStyle(); // respect initial checkbox state
+}
+
+// Call init once DOM + Google Maps are ready
+window.addEventListener("load", () => {
+  if (!window.google || !google.maps) {
+    console.error("Google Maps JavaScript API not loaded.");
+    setStatus("Error loading Google Maps. Check your API key.");
+    return;
+  }
+  initMapCore();
 });
 
 // -------------------------------------------
-// BUILD VORONOI POLYGONS FOR STATION AREAS
+// BUILD STATION AREAS (Voronoi using Turf.js)
 // -------------------------------------------
 function buildStationVoronoi() {
-  const ptFeatures = stations.map((s) =>
-    turf.point([s.coords[1], s.coords[0]], { id: s.id, name: s.name })
+  // Build FeatureCollection of station points
+  const ptFeatures = STATIONS.map((s) =>
+    turf.point([s.coords.lng, s.coords.lat], {
+      id: s.id,
+      name: s.name,
+    })
   );
 
   const fc = turf.featureCollection(ptFeatures);
 
   const bbox = [
-    decaturBounds.getWest(),
-    decaturBounds.getSouth(),
-    decaturBounds.getEast(),
-    decaturBounds.getNorth()
+    decaturBounds.minLng,
+    decaturBounds.minLat,
+    decaturBounds.maxLng,
+    decaturBounds.maxLat,
   ];
 
   const voronoi = turf.voronoi(fc, { bbox });
-
   if (!voronoi || !voronoi.features) {
-    console.warn("Voronoi generation failed – no polygons created");
+    console.warn("Voronoi generation failed; no station polygons created.");
     return;
   }
 
   stationAreasById = {};
+  stationPolygons.forEach((poly) => poly.setMap(null));
+  stationPolygons = [];
 
   const cityPoly = turf.bboxPolygon(bbox);
 
-  voronoi.features.forEach((poly) => {
-    if (!poly || !poly.properties || !poly.properties.id) return;
-    const id = poly.properties.id;
-    const color = stationColors[id] || "#999";
+  voronoi.features.forEach((feature) => {
+    if (!feature || !feature.properties || !feature.properties.id) return;
+    const id = feature.properties.id;
+    const color = STATION_COLORS[id] || "#999999";
 
     let clipped;
     try {
-      clipped = turf.intersect(poly, cityPoly) || poly;
-    } catch {
-      clipped = poly;
+      clipped = turf.intersect(feature, cityPoly) || feature;
+    } catch (e) {
+      clipped = feature;
     }
 
     stationAreasById[id] = clipped;
 
-    L.geoJSON(clipped, {
-      style: {
-        color: color,
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 0.12
-      }
-    }).addTo(map);
+    // Convert Turf polygon to Google Maps Polygon
+    if (!clipped.geometry || clipped.geometry.type !== "Polygon") return;
+    const coords = clipped.geometry.coordinates[0]; // first ring
+    const path = coords.map(([lng, lat]) => ({ lat, lng }));
+
+    const gPoly = new google.maps.Polygon({
+      paths: path,
+      strokeColor: color,
+      strokeOpacity: 1,
+      strokeWeight: 2,
+      fillColor: color,
+      fillOpacity: 0.12,
+      map,
+    });
+
+    stationPolygons.push(gPoly);
   });
 }
 
-buildStationVoronoi();
-
 // -------------------------------------------
-// RANDOM ADDRESS HELPERS
+// GEO / ADDRESS HELPERS (using Google Geocoder)
 // -------------------------------------------
 function setStatus(msg) {
   statusSpan.textContent = msg;
@@ -202,67 +249,80 @@ function rand(min, max) {
 }
 
 function getStationById(id) {
-  return stations.find((s) => s.id === id);
+  return STATIONS.find((s) => s.id === id);
 }
 
-// Reverse geocode via Nominatim
-async function reverseGeocode(lat, lon) {
-  const url = new URL("https://nominatim.openstreetmap.org/reverse");
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("lat", lat.toString());
-  url.searchParams.set("lon", lon.toString());
-  url.searchParams.set("addressdetails", "1");
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      "User-Agent": "DecaturAddressDrill/1.0",
-      "Accept-Language": "en"
-    }
+// Wrap Google Geocoder in a Promise
+function geocodeLatLng(lat, lng) {
+  return new Promise((resolve) => {
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === "OK" && results && results.length) {
+        resolve(results[0]);
+      } else {
+        resolve(null);
+      }
+    });
   });
-
-  if (!res.ok) return null;
-  return res.json();
 }
 
-function formatAddress(addr) {
-  return `${addr.house_number || ""} ${addr.road || ""}, ${
-    addr.city || addr.town || addr.village || "Decatur"
-  }, ${addr.state || "IL"}`.replace(/\s+/g, " ");
+function getComponent(components, type) {
+  const c = components.find((ac) => ac.types.includes(type));
+  return c ? c.long_name : "";
 }
 
-// Get random address for a station (inside its area polygon if available)
-async function getRandomDecaturAddressForStation(station) {
+function formatAddressFromResult(result) {
+  const comps = result.address_components || [];
+  const house = getComponent(comps, "street_number");
+  const road = getComponent(comps, "route");
+  const city =
+    getComponent(comps, "locality") ||
+    getComponent(comps, "postal_town") ||
+    "";
+  const state = getComponent(comps, "administrative_area_level_1") || "IL";
+
+  if (!house || !road || !city) return null;
+
+  return `${house} ${road}, ${city}, ${state}`;
+}
+
+// Get random address within station polygon (or entire city)
+async function getRandomAddressForStation(station) {
   const cityBbox = [
-    decaturBounds.getWest(),
-    decaturBounds.getSouth(),
-    decaturBounds.getEast(),
-    decaturBounds.getNorth()
+    decaturBounds.minLng,
+    decaturBounds.minLat,
+    decaturBounds.maxLng,
+    decaturBounds.maxLat,
   ];
 
-  const areaPoly = station ? stationAreasById[station.id] : null;
-  const bbox = areaPoly ? turf.bbox(areaPoly) : cityBbox;
+  const areaFeature = station ? stationAreasById[station.id] : null;
+  const bbox = areaFeature ? turf.bbox(areaFeature) : cityBbox;
 
   for (let i = 0; i < 30; i++) {
     const lat = rand(bbox[1], bbox[3]);
-    const lon = rand(bbox[0], bbox[2]);
+    const lng = rand(bbox[0], bbox[2]);
 
-    const point = turf.point([lon, lat]);
+    const pt = turf.point([lng, lat]);
 
-    if (areaPoly && !turf.booleanPointInPolygon(point, areaPoly)) continue;
+    if (areaFeature && !turf.booleanPointInPolygon(pt, areaFeature)) continue;
 
-    const data = await reverseGeocode(lat, lon);
-    if (!data || !data.address) continue;
+    const geoResult = await geocodeLatLng(lat, lng);
+    if (!geoResult) continue;
 
-    const addr = data.address;
-    const cityName = (addr.city || addr.town || addr.village || "").toLowerCase();
+    const label = formatAddressFromResult(geoResult);
+    if (!label) continue;
 
-    if (cityName !== "decatur") continue;
-    if (!addr.house_number || !addr.road) continue;
+    // Check city is Decatur (just to be safe)
+    const comps = geoResult.address_components || [];
+    const city =
+      getComponent(comps, "locality") ||
+      getComponent(comps, "postal_town") ||
+      "";
+    if (city.toLowerCase() !== "decatur") continue;
 
     return {
       lat,
-      lon,
-      label: formatAddress(addr)
+      lng,
+      label,
     };
   }
 
@@ -274,20 +334,20 @@ async function getRandomDecaturAddressForStation(station) {
 // -------------------------------------------
 let actualMarker = null;
 let guessMarker = null;
-let clickHandler = null;
+let clickListener = null;
 
 function resetDrill() {
   if (actualMarker) {
-    map.removeLayer(actualMarker);
+    actualMarker.setMap(null);
     actualMarker = null;
   }
   if (guessMarker) {
-    map.removeLayer(guessMarker);
+    guessMarker.setMap(null);
     guessMarker = null;
   }
-  if (clickHandler) {
-    map.off("click", clickHandler);
-    clickHandler = null;
+  if (clickListener) {
+    google.maps.event.removeListener(clickListener);
+    clickListener = null;
   }
 }
 
@@ -304,26 +364,34 @@ async function startNewDrill() {
   );
 
   try {
-    const addrInfo = await getRandomDecaturAddressForStation(station);
+    const addrInfo = await getRandomAddressForStation(station);
     addressSpan.textContent = addrInfo.label;
-    setStatus("Tap the map where you think this address is.");
+    setStatus("Click on the map where you think this address is.");
 
-    actualMarker = L.marker([addrInfo.lat, addrInfo.lon], {
-      opacity: 0
-    }).addTo(map);
+    actualMarker = new google.maps.Marker({
+      position: { lat: addrInfo.lat, lng: addrInfo.lng },
+      map,
+      opacity: 0, // hidden until after guess
+    });
 
-    map.setView([addrInfo.lat, addrInfo.lon], 15);
+    map.setCenter({ lat: addrInfo.lat, lng: addrInfo.lng });
+    map.setZoom(15);
 
-    clickHandler = (e) => {
-      if (guessMarker) map.removeLayer(guessMarker);
-      guessMarker = L.marker(e.latlng).addTo(map);
+    clickListener = map.addListener("click", (e) => {
+      if (guessMarker) guessMarker.setMap(null);
+      guessMarker = new google.maps.Marker({
+        position: e.latLng,
+        map,
+      });
 
+      // Reveal actual marker
       actualMarker.setOpacity(1);
 
-      const distMeters = turf.distance(
-        turf.point([e.latlng.lng, e.latlng.lat]),
-        turf.point([addrInfo.lon, addrInfo.lat]),
-        { units: "meters" }
+      const from = e.latLng;
+      const to = new google.maps.LatLng(addrInfo.lat, addrInfo.lng);
+      const distMeters = google.maps.geometry.spherical.computeDistanceBetween(
+        from,
+        to
       );
       const distFeet = metersToFeet(distMeters);
 
@@ -336,59 +404,43 @@ async function startNewDrill() {
         msg = `😬 ${distFeet.toFixed(0)} ft away. Keep practicing.`;
       }
 
-      actualMarker
-        .bindPopup(`<b>${addrInfo.label}</b><br>${msg}`)
-        .openPopup();
+      const info = new google.maps.InfoWindow({
+        content: `<b>${addrInfo.label}</b><br>${msg}`,
+        position: { lat: addrInfo.lat, lng: addrInfo.lng },
+      });
+      info.open(map, actualMarker);
 
-      const group = L.featureGroup([guessMarker, actualMarker]);
-      map.fitBounds(group.getBounds().pad(0.5));
+      setStatus('Drill complete. Click "New Drill" to try another address.');
 
-      setStatus('Drill complete. Tap "New Drill" to try another address.');
-
-      map.off("click", clickHandler);
-      clickHandler = null;
-    };
-
-    map.on("click", clickHandler);
+      google.maps.event.removeListener(clickListener);
+      clickListener = null;
+    });
   } catch (err) {
     console.error(err);
+    addressSpan.textContent = "None yet – click “New Drill”";
     setStatus("Couldn't find a valid address this time. Try again.");
   }
 }
 
 // -------------------------------------------
-// UI EVENTS
+// UI WIRING
 // -------------------------------------------
-newDrillBtn.addEventListener("click", startNewDrill);
+function wireUI() {
+  // New Drill
+  newDrillBtn.addEventListener("click", startNewDrill);
 
-// Basemap toggle – road vs satellite; labels are separate
-basemapSelect.addEventListener("change", () => {
-  map.removeLayer(currentBase);
+  // Basemap: road vs satellite
+  basemapSelect.addEventListener("change", () => {
+    if (basemapSelect.value === "satellite") {
+      map.setMapTypeId("hybrid"); // imagery + labels
+    } else {
+      map.setMapTypeId("roadmap");
+    }
+    applyMapStyle(); // re-apply styles after type change
+  });
 
-  if (basemapSelect.value === "satellite") {
-    currentBase = imageryBase;
-  } else {
-    currentBase = roadBase;
-  }
-
-  currentBase.addTo(map);
-
-  // Apply labels according to checkbox
-  if (streetNamesCheckbox.checked) {
-    labelOverlay.addTo(map);
-  } else {
-    map.removeLayer(labelOverlay);
-  }
-});
-
-// Street names toggle – works for BOTH road and satellite views
-streetNamesCheckbox.addEventListener("change", () => {
-  if (streetNamesCheckbox.checked) {
-    labelOverlay.addTo(map);
-  } else {
-    map.removeLayer(labelOverlay);
-  }
-});
-
-// Initial status
-setStatus("Pick a station, choose map view, then click “New Drill”.");
+  // Street names toggle (Snazzy style vs default)
+  streetNamesCheckbox.addEventListener("change", () => {
+    applyMapStyle();
+  });
+}
