@@ -47,7 +47,7 @@ function randomPointInBbox(bbox) {
  * Ask Nominatim (OpenStreetMap geocoder) for the address at a lat/lon.
  * Returns null if no good address / not Decatur / no house number.
  *
- * NOTE: For real use, replace the email in User-Agent with YOUR email.
+ * NOTE: Replace the email in User-Agent with YOUR email.
  */
 async function reverseGeocodeDecatur(lat, lon) {
   const url = new URL("https://nominatim.openstreetmap.org/reverse");
@@ -86,7 +86,7 @@ async function reverseGeocodeDecatur(lat, lon) {
     return null;
   }
 
-  // REQUIRE a proper house number + street
+  // REQUIRE a proper house number + street (from fields)
   const house = addr.house_number || "";
   const road =
     addr.road ||
@@ -101,9 +101,16 @@ async function reverseGeocodeDecatur(lat, lon) {
   }
 
   const state = addr.state || "IL";
-  const label = `${house} ${road}, Decatur, ${state}`
+  let label = `${house} ${road}, Decatur, ${state}`
     .replace(/\s+/g, " ")
     .trim();
+
+  // Extra safety: require at least one digit anywhere in the label
+  // This guarantees things like "Woodridge Court, Decatur, Illinois" (no number)
+  // are rejected even if something weird happens with fields.
+  if (!/\d/.test(label)) {
+    return null;
+  }
 
   const latNum = Number(data.lat);
   const lonNum = Number(data.lon);
@@ -122,7 +129,7 @@ async function reverseGeocodeDecatur(lat, lon) {
  * Get a random address INSIDE Decatur by:
  * - picking a random point in a bbox
  * - reverse geocoding it
- * - requiring house number + street
+ * - requiring house number + street + digit in label
  */
 async function getRandomAddressInDecatur(maxTries = 40) {
   // Bounding box that covers Decatur (rough but safe).
