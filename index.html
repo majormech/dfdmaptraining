@@ -84,9 +84,14 @@
       color: #444;
     }
 
+    #game-info, #game-score {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
     #map {
       width: 100%;
-      height: calc(100vh - 150px);
+      height: calc(100vh - 160px);
     }
 
     @media (max-width: 768px) {
@@ -95,7 +100,7 @@
         align-items: flex-start;
       }
       #map {
-        height: calc(100vh - 190px);
+        height: calc(100vh - 200px);
       }
     }
   </style>
@@ -104,12 +109,13 @@
   <header>
     <h1>Decatur Address Drill – Stations & Zones</h1>
     <small>
-      Pick a station, then click "New Drill" to get a random address inside that station’s response zone.
+      Pick a station or "Any", then use Single Drill or 10-Call Game mode.
     </small>
   </header>
 
   <div class="controls">
-    <button id="new-drill">New Drill</button>
+    <button id="new-drill">Single Drill</button>
+    <button id="start-game">Start 10-Call Game</button>
 
     <label>
       Station:
@@ -137,6 +143,8 @@
 
     <span>Address: <span id="address">None yet</span></span>
     <span id="status">Ready</span>
+    <span id="game-info">Game: not running</span>
+    <span id="game-score">Score: 0</span>
   </div>
 
   <div id="map"></div>
@@ -152,4 +160,3 @@
   ></script>
 </body>
 </html>
-
