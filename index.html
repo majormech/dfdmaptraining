@@ -37,15 +37,19 @@
       flex-wrap: wrap;
       gap: 0.75rem;
       align-items: center;
-      font-size: 1.4rem;
+      font-size: 1.4rem; /* ~175% */
     }
-    #new-drill {
-      padding: 0.75rem 1.4rem;
-      font-size: 1.5rem;
+    .controls button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1.3rem;
       border-radius: 8px;
       border: 2px solid #333;
       background: #fff;
       cursor: pointer;
+    }
+    .controls button:disabled {
+      opacity: 0.4;
+      cursor: default;
     }
     select {
       font-size: 1.4rem;
@@ -90,11 +94,15 @@
 
   <header>
     <h1>Decatur Address Drill</h1>
-    <small>Pick a station, toggle map style, then click “New Drill”.</small>
+    <small>Guess the address, then plan your route from the station.</small>
   </header>
 
   <div class="controls">
     <button id="new-drill">New Drill</button>
+
+    <button id="start-route" disabled>Start Route</button>
+    <button id="clear-route" disabled>Clear Route</button>
+    <button id="submit-route" disabled>Submit Route</button>
 
     <label>
       Station:
@@ -129,13 +137,13 @@
 
   <div id="map"></div>
 
-  <!-- Google Maps JS (requires valid API key) -->
- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry"></script>
+  <!-- Google Maps JS (use your restricted key) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE&libraries=geometry"></script>
 
-  <!-- Turf.js (for Voronoi, point-in-poly, distance) -->
+  <!-- Turf.js (Voronoi, point-in-polygon, etc.) -->
   <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
 
-  <!-- Your main logic -->
+  <!-- Main logic -->
   <script src="main.js"></script>
 </body>
 </html>
