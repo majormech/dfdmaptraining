@@ -1,9 +1,11 @@
 // -------------------------------------------
 // Decatur Address Drill – Google Maps + Snazzy
-// Fire Stations + Response Zones from GeoJSON
+// Station-specific drills + zone toggle
 // -------------------------------------------
 
 const newDrillBtn = document.getElementById("new-drill");
+const stationSelect = document.getElementById("station-select");
+const zonesCheckbox = document.getElementById("toggle-zones");
 const streetNamesCheckbox = document.getElementById("toggle-street-names");
 const addressSpan = document.getElementById("address");
 const statusSpan = document.getElementById("status");
@@ -11,7 +13,7 @@ const statusSpan = document.getElementById("status");
 let map;
 let geocoder;
 
-// Rough bounding box for Decatur, IL
+// Rough bounding box for fallback Decatur city-wide
 const decaturBounds = {
   minLat: 39.80,
   maxLat: 39.90,
@@ -1786,7 +1788,7 @@ const RESPONSE_ZONES_GEOJSON = {
 // State for zones & stations
 // -------------------------------------------
 let stationMarkers = [];
-let stationZonePolygons = [];
+let stationZonePolygons = []; // list of { polygon, stationId }
 const STATIONS_BY_ID = {}; // { "1": { id, name, lat, lng } }
 
 // -------------------------------------------
@@ -1815,7 +1817,16 @@ function applyMapStyle() {
   }
 }
 
-// Google reverse geocode for random calls
+// Zone visibility toggle
+function applyZoneVisibility() {
+  if (!map) return;
+  const showZones = zonesCheckbox.checked;
+  stationZonePolygons.forEach(({ polygon }) => {
+    polygon.setMap(showZones ? map : null);
+  });
+}
+
+// Reverse geocode for random calls
 function geocodeLatLng(lat, lng) {
   return new Promise((resolve) => {
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
@@ -1849,8 +1860,8 @@ function formatAddressFromResult(result) {
   return `${house} ${road}, ${city}, ${state}`;
 }
 
-// Random real Decatur address (with house number)
-async function getRandomDecaturAddress() {
+// Fallback: random real Decatur address (anywhere in the city box)
+async function getRandomDecaturAddressCityWide() {
   for (let i = 0; i < 40; i++) {
     const lat = rand(decaturBounds.minLat, decaturBounds.maxLat);
     const lng = rand(decaturBounds.minLng, decaturBounds.maxLng);
@@ -1876,6 +1887,108 @@ async function getRandomDecaturAddress() {
 }
 
 // -------------------------------------------
+// Station polygons: sampling points inside
+// -------------------------------------------
+
+// Get all polygons belonging to a stationId
+function getPolygonsForStation(stationId) {
+  return stationZonePolygons
+    .filter((z) => z.stationId === stationId)
+    .map((z) => z.polygon);
+}
+
+// Random point inside a Google Maps Polygon
+function getRandomPointInPolygon(polygon) {
+  const bounds = new google.maps.LatLngBounds();
+  const path = polygon.getPath();
+  for (let i = 0; i < path.getLength(); i++) {
+    bounds.extend(path.getAt(i));
+  }
+
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+
+  // Try up to N times to hit inside polygon
+  for (let i = 0; i < 50; i++) {
+    const lat = rand(sw.lat(), ne.lat());
+    const lng = rand(sw.lng(), ne.lng());
+    const point = new google.maps.LatLng(lat, lng);
+
+    if (google.maps.geometry.poly.containsLocation(point, polygon)) {
+      return point;
+    }
+  }
+
+  // Fallback: first vertex
+  return path.getAt(0);
+}
+
+// Random address inside a station's zone
+async function getRandomAddressInStationZone(stationId) {
+  const polygons = getPolygonsForStation(stationId);
+  if (!polygons.length) {
+    // Fallback to city-wide
+    return getRandomDecaturAddressCityWide();
+  }
+
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const polygon =
+      polygons[Math.floor(Math.random() * polygons.length)];
+    const point = getRandomPointInPolygon(polygon);
+    const lat = point.lat();
+    const lng = point.lng();
+
+    const result = await geocodeLatLng(lat, lng);
+    if (!result) continue;
+
+    const label = formatAddressFromResult(result);
+    if (!label) continue;
+
+    const comps = result.address_components || [];
+    const city =
+      getComponent(comps, "locality") ||
+      getComponent(comps, "postal_town") ||
+      "";
+
+    if (city.toLowerCase() !== "decatur") continue;
+
+    return { lat, lng, label, stationId };
+  }
+
+  throw new Error(
+    `Could not find a random address in Station ${stationId}'s zone.`
+  );
+}
+
+// Master helper to decide which station the drill uses
+async function getRandomAddressForDrill() {
+  const selected = stationSelect.value; // "any" or "1".."7"
+
+  // Build list of station IDs that have polygons
+  const availableStationIds = [
+    ...new Set(stationZonePolygons.map((z) => z.stationId)),
+  ];
+
+  if (!availableStationIds.length) {
+    // If somehow no zones, fallback city-wide
+    return getRandomDecaturAddressCityWide();
+  }
+
+  let stationIdToUse;
+
+  if (selected === "any") {
+    stationIdToUse =
+      availableStationIds[
+        Math.floor(Math.random() * availableStationIds.length)
+      ];
+  } else {
+    stationIdToUse = selected;
+  }
+
+  return getRandomAddressInStationZone(stationIdToUse);
+}
+
+// -------------------------------------------
 // Drill state
 // -------------------------------------------
 let actualMarker = null;
@@ -1897,15 +2010,24 @@ function resetDrill() {
   }
 }
 
-// Main drill
+// Main drill: now station-specific
 async function startNewDrill() {
   resetDrill();
-  setStatus("Looking for a random address in Decatur…");
+  const selected = stationSelect.value;
+
+  if (selected === "any") {
+    setStatus("Looking for a random station zone address…");
+  } else {
+    setStatus(`Looking for a random address in Station ${selected}'s zone…`);
+  }
   addressSpan.textContent = "Searching…";
 
   try {
-    const addrInfo = await getRandomDecaturAddress();
-    addressSpan.textContent = addrInfo.label;
+    const addrInfo = await getRandomAddressForDrill();
+    const stationLabel =
+      addrInfo.stationId || (selected === "any" ? "?" : selected);
+
+    addressSpan.textContent = `${addrInfo.label} (S${stationLabel})`;
     setStatus("Click on the map where you think this address is.");
 
     actualMarker = new google.maps.Marker({
@@ -1914,6 +2036,8 @@ async function startNewDrill() {
       opacity: 0,
     });
 
+    // Do NOT recenter/zoom on new drill; user can move the map as they like
+
     clickListener = map.addListener("click", (e) => {
       if (guessMarker) guessMarker.setMap(null);
       guessMarker = new google.maps.Marker({
@@ -1921,6 +2045,7 @@ async function startNewDrill() {
         map,
       });
 
+      // Reveal correct location
       actualMarker.setOpacity(1);
 
       const from = e.latLng;
@@ -1940,11 +2065,16 @@ async function startNewDrill() {
       }
 
       const info = new google.maps.InfoWindow({
-        content: `<b>${addrInfo.label}</b><br>${msg}`,
+        content: `<b>${addrInfo.label}</b><br>${msg}${
+          addrInfo.stationId
+            ? `<br><small>Station zone: ${addrInfo.stationId}</small>`
+            : ""
+        }`,
         position: { lat: addrInfo.lat, lng: addrInfo.lng },
       });
       info.open(map, actualMarker);
 
+      // Fit both markers into view
       const bounds = new google.maps.LatLngBounds();
       bounds.extend(actualMarker.getPosition());
       bounds.extend(guessMarker.getPosition());
@@ -1958,7 +2088,7 @@ async function startNewDrill() {
   } catch (err) {
     console.error(err);
     addressSpan.textContent = "None – try again";
-    setStatus("Couldn't find a valid address this time. Click New Drill again.");
+    setStatus(err.message || "Couldn't find a valid address. Click New Drill again.");
   }
 }
 
@@ -1979,7 +2109,7 @@ function initZonesAndStationsFromGeoJSON() {
 
   stationMarkers.forEach((m) => m.setMap(null));
   stationMarkers = [];
-  stationZonePolygons.forEach((p) => p.setMap(null));
+  stationZonePolygons.forEach(({ polygon }) => polygon.setMap(null));
   stationZonePolygons = [];
 
   (RESPONSE_ZONES_GEOJSON.features || []).forEach((feature) => {
@@ -2038,10 +2168,11 @@ function initZonesAndStationsFromGeoJSON() {
         map,
       });
 
-      stationZonePolygons.push(polygon);
+      stationZonePolygons.push({ polygon, stationId });
     }
   });
 
+  applyZoneVisibility();
   setStatus("Stations & response zones loaded. Click \"New Drill\" to start.");
 }
 
@@ -2062,11 +2193,12 @@ function initMap() {
 
   newDrillBtn.addEventListener("click", startNewDrill);
   streetNamesCheckbox.addEventListener("change", applyMapStyle);
+  zonesCheckbox.addEventListener("change", applyZoneVisibility);
 
   applyMapStyle();
-  setStatus('Click "New Drill" to start.');
+  setStatus("Loading stations & zones…");
 
-  // Load all zones + station pins from GeoJSON
+  // Load zones + station pins from GeoJSON
   initZonesAndStationsFromGeoJSON();
 }
 
