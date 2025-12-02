@@ -1819,23 +1819,23 @@ function rand(min, max) {
 
 // Score based on distance (lower = better)
 function scoreFromFeet(distFeet) {
-  if (distFeet <= 50) {
+  if (distFeet <= 150) {
     return 1;
-  } else if (distFeet <= 300) {
+  } else if (distFeet <= 500) {
     // 51–300 ft → 2–30 points (linear)
-    const minD = 51;
-    const maxD = 300;
+    const minD = 150;
+    const maxD = 1000;
     const t = Math.min(Math.max((distFeet - minD) / (maxD - minD), 0), 1);
-    return Math.round(2 + t * (30 - 2));
+    return Math.round(2 + t * (300 - 2));
   } else if (distFeet <= 1500) {
     // 300–1500 ft → 31–75 points
     const minD = 301;
     const maxD = 1500;
     const t = Math.min(Math.max((distFeet - minD) / (maxD - minD), 0), 1);
-    return Math.round(31 + t * (75 - 31));
+    return Math.round(301 + t * (750 - 301));
   } else {
     // >1500 ft
-    return 100;
+    return 1000;
   }
 }
 
