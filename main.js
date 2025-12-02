@@ -1,34 +1,42 @@
 // -------------------------------------------
-// Decatur Address Drill – v1 (Leaflet + Nominatim)
+// Decatur Address Drill – Google Maps + Snazzy v1
 // -------------------------------------------
 
 const newDrillBtn = document.getElementById("new-drill");
+const streetNamesCheckbox = document.getElementById("toggle-street-names");
 const addressSpan = document.getElementById("address");
 const statusSpan = document.getElementById("status");
 
-// Rough bounding box for Decatur, IL
-const decaturBounds = L.latLngBounds(
-  [39.80, -89.05], // SW
-  [39.90, -88.85]  // NE
-);
+// Map + services
+let map;
+let geocoder;
 
-// Set up map
-const map = L.map("map", {
-  center: [39.8425, -88.9531],
-  zoom: 13,
-  maxBounds: decaturBounds.pad(0.5),
-  maxBoundsViscosity: 0.8,
-});
+// Rough bounding box for Decatur, IL (for random point generation)
+const decaturBounds = {
+  minLat: 39.80,
+  maxLat: 39.90,
+  minLng: -89.05,
+  maxLng: -88.85,
+};
 
-// Base map (OpenStreetMap)
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "&copy; OpenStreetMap contributors"
-}).addTo(map);
+// Snazzy Maps style: "Map without labels"
+// https://snazzymaps.com/style/24088/map-without-labels
+const NO_LABELS_STYLE = [
+  {
+    featureType: "all",
+    elementType: "labels.text",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    featureType: "all",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }]
+  }
+];
 
 let actualMarker = null;
 let guessMarker = null;
-let clickHandler = null;
+let clickListener = null;
 
 function setStatus(msg) {
   statusSpan.textContent = msg;
@@ -42,63 +50,72 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
-// Reverse geocode using Nominatim (OpenStreetMap)
-async function reverseGeocode(lat, lon) {
-  const url = new URL("https://nominatim.openstreetmap.org/reverse");
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("lat", lat.toString());
-  url.searchParams.set("lon", lon.toString());
-  url.searchParams.set("addressdetails", "1");
+// Toggle Snazzy no-labels vs standard labels-on style
+function applyMapStyle() {
+  if (!map) return;
+  const showStreetNames = streetNamesCheckbox.checked;
+  if (showStreetNames) {
+    map.setOptions({ styles: [] }); // default Google style
+  } else {
+    map.setOptions({ styles: NO_LABELS_STYLE });
+  }
+}
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      "User-Agent": "DecaturAddressDrill-v1/1.0",
-      "Accept-Language": "en"
-    }
+// Geocode a lat/lng using Google Geocoder
+function geocodeLatLng(lat, lng) {
+  return new Promise((resolve) => {
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === "OK" && results && results.length) {
+        resolve(results[0]);
+      } else {
+        resolve(null);
+      }
+    });
   });
-
-  if (!res.ok) return null;
-  return res.json();
 }
 
-function formatAddress(addr) {
-  const house = addr.house_number || "";
-  const road = addr.road || addr.residential || addr.footway || "";
-  const city = addr.city || addr.town || addr.village || "Decatur";
-  const state = addr.state || "IL";
-
-  const line1 = `${house} ${road}`.trim();
-  return `${line1}, ${city}, ${state}`;
+function getComponent(components, type) {
+  const c = components.find((ac) => ac.types.includes(type));
+  return c ? c.long_name : "";
 }
 
-// Find a random point in the decatur bounding box with a proper address
+function formatAddressFromResult(result) {
+  const comps = result.address_components || [];
+  const house = getComponent(comps, "street_number");
+  const road = getComponent(comps, "route");
+  const city =
+    getComponent(comps, "locality") ||
+    getComponent(comps, "postal_town") ||
+    "";
+  const state =
+    getComponent(comps, "administrative_area_level_1") || "IL";
+
+  if (!house || !road || !city) return null;
+
+  return `${house} ${road}, ${city}, ${state}`;
+}
+
+// Get a random address inside Decatur city box using Google Geocoder
 async function getRandomDecaturAddress() {
-  const bbox = [
-    decaturBounds.getSouth(),
-    decaturBounds.getWest(),
-    decaturBounds.getNorth(),
-    decaturBounds.getEast()
-  ];
-
   for (let i = 0; i < 40; i++) {
-    const lat = rand(bbox[0], bbox[2]);
-    const lon = rand(bbox[1], bbox[3]);
+    const lat = rand(decaturBounds.minLat, decaturBounds.maxLat);
+    const lng = rand(decaturBounds.minLng, decaturBounds.maxLng);
 
-    const data = await reverseGeocode(lat, lon);
-    if (!data || !data.address) continue;
+    const result = await geocodeLatLng(lat, lng);
+    if (!result) continue;
 
-    const addr = data.address;
-    const cityName = (addr.city || addr.town || addr.village || "").toLowerCase();
+    const label = formatAddressFromResult(result);
+    if (!label) continue;
 
-    // Require it to be Decatur and have a house number and a road
-    if (cityName !== "decatur") continue;
-    if (!addr.house_number || !addr.road) continue;
+    const comps = result.address_components || [];
+    const city =
+      getComponent(comps, "locality") ||
+      getComponent(comps, "postal_town") ||
+      "";
 
-    return {
-      lat,
-      lon,
-      label: formatAddress(addr)
-    };
+    if (city.toLowerCase() !== "decatur") continue;
+
+    return { lat, lng, label };
   }
 
   throw new Error("Could not find a random Decatur address. Try again.");
@@ -106,19 +123,20 @@ async function getRandomDecaturAddress() {
 
 function resetDrill() {
   if (actualMarker) {
-    map.removeLayer(actualMarker);
+    actualMarker.setMap(null);
     actualMarker = null;
   }
   if (guessMarker) {
-    map.removeLayer(guessMarker);
+    guessMarker.setMap(null);
     guessMarker = null;
   }
-  if (clickHandler) {
-    map.off("click", clickHandler);
-    clickHandler = null;
+  if (clickListener) {
+    google.maps.event.removeListener(clickListener);
+    clickListener = null;
   }
 }
 
+// Main drill: pick random address, let user guess, then show distance
 async function startNewDrill() {
   resetDrill();
   setStatus("Looking for a random address in Decatur…");
@@ -126,28 +144,33 @@ async function startNewDrill() {
 
   try {
     const addrInfo = await getRandomDecaturAddress();
-
-    // Save address and set UI
     addressSpan.textContent = addrInfo.label;
     setStatus("Click on the map where you think this address is.");
 
-    // Place hidden marker at the true location
-    actualMarker = L.marker([addrInfo.lat, addrInfo.lon], {
+    // Hidden marker for the correct location
+    actualMarker = new google.maps.Marker({
+      position: { lat: addrInfo.lat, lng: addrInfo.lng },
+      map,
       opacity: 0
-    }).addTo(map);
+    });
 
-    // DO NOT recenter/zoom; user can move map as they wish
+    // Do NOT recenter/zoom; user can move the map as they like
 
-    clickHandler = (e) => {
-      // Remove old guess marker if any
-      if (guessMarker) map.removeLayer(guessMarker);
-      guessMarker = L.marker(e.latlng).addTo(map);
+    clickListener = map.addListener("click", (e) => {
+      if (guessMarker) guessMarker.setMap(null);
+      guessMarker = new google.maps.Marker({
+        position: e.latLng,
+        map
+      });
 
-      // Reveal actual marker
+      // Reveal the correct location
       actualMarker.setOpacity(1);
 
-      // Distance calculation
-      const distMeters = map.distance(e.latlng, actualMarker.getLatLng());
+      const from = e.latLng;
+      const to = new google.maps.LatLng(addrInfo.lat, addrInfo.lng);
+
+      const distMeters =
+        google.maps.geometry.spherical.computeDistanceBetween(from, to);
       const distFeet = metersToFeet(distMeters);
 
       let msg;
@@ -159,22 +182,23 @@ async function startNewDrill() {
         msg = `😬 ${distFeet.toFixed(0)} ft away. Keep practicing.`;
       }
 
-      actualMarker
-        .bindPopup(`<b>${addrInfo.label}</b><br>${msg}`)
-        .openPopup();
+      const info = new google.maps.InfoWindow({
+        content: `<b>${addrInfo.label}</b><br>${msg}`,
+        position: { lat: addrInfo.lat, lng: addrInfo.lng }
+      });
+      info.open(map, actualMarker);
 
-      // Fit bounds of guess + answer so user can see both
-      const group = L.featureGroup([actualMarker, guessMarker]);
-      map.fitBounds(group.getBounds().pad(0.5));
+      // Fit both markers into view so they can see their error
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(actualMarker.getPosition());
+      bounds.extend(guessMarker.getPosition());
+      map.fitBounds(bounds);
 
       setStatus('Drill complete. Click "New Drill" for another address.');
 
-      // Stop listening for more clicks until next drill
-      map.off("click", clickHandler);
-      clickHandler = null;
-    };
-
-    map.on("click", clickHandler);
+      google.maps.event.removeListener(clickListener);
+      clickListener = null;
+    });
   } catch (err) {
     console.error(err);
     addressSpan.textContent = "None – try again";
@@ -182,8 +206,29 @@ async function startNewDrill() {
   }
 }
 
-// Wire up button
-newDrillBtn.addEventListener("click", startNewDrill);
+// -------------------------------------------
+// initMap – called by Google Maps callback
+// -------------------------------------------
+function initMap() {
+  // Approx center of Decatur (Main & Main-ish)
+  const center = { lat: 39.8425, lng: -88.9531 };
 
-// Initial status
-setStatus("Click New Drill to start.");
+  map = new google.maps.Map(document.getElementById("map"), {
+    center,
+    zoom: 13,
+    mapTypeId: "roadmap",
+    styles: [] // start with labels on
+  });
+
+  geocoder = new google.maps.Geocoder();
+
+  // Wire up UI
+  newDrillBtn.addEventListener("click", startNewDrill);
+  streetNamesCheckbox.addEventListener("change", applyMapStyle);
+
+  applyMapStyle();
+  setStatus('Click "New Drill" to start.');
+}
+
+// Expose initMap globally for the Google Maps callback
+window.initMap = initMap;
