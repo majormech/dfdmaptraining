@@ -1,15 +1,3 @@
-
-// Station colors
-const STATION_COLORS = {
-  "1": "#FF0000", // red
-  "2": "#0055FF", // blue
-  "3": "#00AA55", // green
-  "4": "#FF7F00", // orange
-  "5": "#AA00FF", // purple
-  "6": "#00CCBB", // teal
-  "7": "#FFFF00", // yellow
-};
-
 // -------------------------------------------
 // Full Fire Stations + Response Zones GeoJSON
 // (your data pasted directly)
