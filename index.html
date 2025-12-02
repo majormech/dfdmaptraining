@@ -2,15 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Decatur Address Drill – v1</title>
-
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
+  <title>Decatur Address Drill – Google + Snazzy</title>
 
   <style>
     * { box-sizing: border-box; }
@@ -49,7 +41,7 @@
       font-size: 1rem;
     }
 
-    #new-drill {
+    .controls button {
       padding: 0.5rem 1.25rem;
       font-size: 1.1rem;
       border-radius: 8px;
@@ -58,9 +50,20 @@
       cursor: pointer;
     }
 
-    #new-drill:hover {
+    .controls button:hover {
       background: #333;
       color: #fff;
+    }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 1rem;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.2);
     }
 
     #address {
@@ -73,7 +76,7 @@
       color: #444;
     }
 
-    /* *** KEY PART: give the map a real height *** */
+    /* Give the map a solid height */
     #map {
       width: 100%;
       height: calc(100vh - 150px); /* header + controls ≈ 150px */
@@ -92,7 +95,7 @@
 </head>
 <body>
   <header>
-    <h1>Decatur Address Drill – v1</h1>
+    <h1>Decatur Address Drill – Google + Snazzy</h1>
     <small>
       Click "New Drill" to get a random address in Decatur. Then click the map where you think it is.
     </small>
@@ -100,20 +103,26 @@
 
   <div class="controls">
     <button id="new-drill">New Drill</button>
+
+    <label>
+      <input type="checkbox" id="toggle-street-names" checked />
+      Street names
+    </label>
+
     <span>Address: <span id="address">None yet</span></span>
     <span id="status">Ready</span>
   </div>
 
   <div id="map"></div>
 
-  <!-- Leaflet JS -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-VuZ8H8S2xNbtC2v7Dw8GkS+aoCAx4AUWcC2hBqYtW70="
-    crossorigin=""
-  ></script>
+<!-- Your app logic (defines window.initMap) -->
+<script src="main.js"></script>
 
-  <!-- main logic -->
-  <script src="main.js"></script>
+<!-- Google Maps JS with YOUR key -->
+<script
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry&callback=initMap"
+  async
+  defer
+></script>
 </body>
 </html>
