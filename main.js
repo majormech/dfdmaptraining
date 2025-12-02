@@ -1736,12 +1736,13 @@ const RESPONSE_ZONES_GEOJSON = {
   ]
 };
 
-// -------------------------------------------
-// State for zones & stations
-// -------------------------------------------
-
+// -------------------------------
+// Controls & global state
+// -------------------------------
 const newDrillBtn = document.getElementById("new-drill");
 const startGameBtn = document.getElementById("start-game");
+const startRouteGameBtn = document.getElementById("start-route-game");
+const submitRouteBtn = document.getElementById("submit-route");
 const stationSelect = document.getElementById("station-select");
 const zonesCheckbox = document.getElementById("toggle-zones");
 const streetNamesCheckbox = document.getElementById("toggle-street-names");
@@ -1753,18 +1754,26 @@ const gameScoreSpan = document.getElementById("game-score");
 let map;
 let geocoder;
 
-// Rough bounding box for fallback random city address
+// Rough city box (fallback)
 const decaturBounds = {
-  minLat: 39.80,
-  maxLat: 39.90,
+  minLat: 39.8,
+  maxLat: 39.9,
   minLng: -89.05,
   maxLng: -88.85,
 };
 
-// Snazzy no-label styling
+// Snazzy / no-labels style
 const NO_LABELS_STYLE = [
-  { featureType: "all", elementType: "labels.text", stylers: [{ visibility: "off" }] },
-  { featureType: "all", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "all",
+    elementType: "labels.text",
+    stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "all",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }],
+  },
 ];
 
 // Station colors
@@ -1778,25 +1787,37 @@ const STATION_COLORS = {
   "7": "#FFFF00",
 };
 
-// Storage
+// Stations / zones
 let stationMarkers = [];
 let stationZonePolygons = [];
 const STATIONS_BY_ID = {};
 
+// Drill markers
 let actualMarker = null;
 let guessMarker = null;
 let clickListener = null;
 
-// Game State
+// Distance game state (10-address “classic”)
 let gameActive = false;
 const gameRoundsTotal = 10;
 let currentRound = 0;
 let totalScore = 0;
-let gameHistory = [];   // ⬅ stores results for popup summary
+let gameHistory = [];
 
-// -------------------------------------------
-// Utility Functions
-// -------------------------------------------
+// Route game state (10-address “route mode”)
+let routeGameActive = false;
+const routeRoundsTotal = 10;
+let routeCurrentRound = 0;
+let routeTotalScore = 0;
+let routeHistory = [];
+let currentRoutePolyline = null;
+let currentRoutePath = [];
+let currentRouteAnswer = null;
+let currentRouteStationId = null;
+
+// -------------------------------
+// Helpers
+// -------------------------------
 function setStatus(msg) {
   statusSpan.textContent = msg;
 }
@@ -1809,23 +1830,28 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
-// Scoring rules updated:
+// Scoring rules (for both games)
 function scoreFromFeet(distFeet) {
   if (distFeet <= 150) {
     return 1;
   } else if (distFeet <= 600) {
-    const t = (distFeet - 151) / (600 - 151);
+    const minD = 151;
+    const maxD = 600;
+    const t = Math.min(Math.max((distFeet - minD) / (maxD - minD), 0), 1);
     return Math.round(2 + t * (300 - 2));
   } else if (distFeet <= 1750) {
-    const t = (distFeet - 601) / (1750 - 601);
+    const minD = 601;
+    const maxD = 1750;
+    const t = Math.min(Math.max((distFeet - minD) / (maxD - minD), 0), 1);
     return Math.round(301 + t * (750 - 301));
   } else {
     return 1000;
   }
 }
 
-// Apply snazzy map style toggle
+// Map style & zones
 function applyMapStyle() {
+  if (!map) return;
   if (streetNamesCheckbox.checked) {
     map.setOptions({ styles: [] });
   } else {
@@ -1833,65 +1859,90 @@ function applyMapStyle() {
   }
 }
 
-// Toggle zone visibility
 function applyZoneVisibility() {
+  if (!map) return;
   const show = zonesCheckbox.checked;
-  stationZonePolygons.forEach(z => z.polygon.setMap(show ? map : null));
+  stationZonePolygons.forEach(({ polygon }) =>
+    polygon.setMap(show ? map : null)
+  );
 }
 
-// Game UI update
+// Game UI (handles both games)
 function updateGameUI() {
-  if (!gameActive) {
-    gameInfoSpan.textContent = "Game: not running";
+  if (gameActive) {
+    gameInfoSpan.textContent = `Distance Game: round ${currentRound}/${gameRoundsTotal}`;
+    gameScoreSpan.textContent = `Score: ${totalScore}`;
+  } else if (routeGameActive) {
+    gameInfoSpan.textContent = `Route Game: round ${routeCurrentRound}/${routeRoundsTotal}`;
+    gameScoreSpan.textContent = `Route Score: ${routeTotalScore}`;
   } else {
-    gameInfoSpan.textContent = `Game: round ${currentRound}/${gameRoundsTotal}`;
+    gameInfoSpan.textContent = "Game: not running";
+    gameScoreSpan.textContent = `Score: 0`;
   }
-  gameScoreSpan.textContent = `Score: ${totalScore}`;
 }
 
-// Show final popup summary
+// Popup summaries
 function showFinalResults() {
-  let summary = "10-Address Game Complete\n\n";
+  let summary = "10-Address Distance Game Complete\n\n";
   summary += `Total Score: ${totalScore}\n\n`;
-  summary += "Round Details:\n\n";
+  summary += "Round details:\n\n";
 
-  gameHistory.forEach(r => {
-    summary += `Round ${r.round} – ${r.address}\n`;
-    summary += `Distance: ${r.distanceFeet.toFixed(0)} ft\n`;
-    summary += `Points: ${r.points}\n\n`;
+  gameHistory.forEach((entry) => {
+    summary += `Round ${entry.round}: ${entry.address}\n`;
+    summary += `  Distance: ${entry.distanceFeet.toFixed(
+      0
+    )} ft, Points: ${entry.points}\n\n`;
   });
 
-  alert(summary); // stays until user clicks OK
+  alert(summary);
 }
 
-// -------------------------------------------
-// GeoCoding Helpers
-// -------------------------------------------
+function showRouteFinalResults() {
+  let summary = "10-Address Route Game Complete\n\n";
+  summary += `Total Route Score: ${routeTotalScore}\n\n`;
+  summary += "Round details:\n\n";
+
+  routeHistory.forEach((entry) => {
+    summary += `Round ${entry.round}: ${entry.address}\n`;
+    summary += `  Distance: ${entry.distanceFeet.toFixed(
+      0
+    )} ft, Points: ${entry.points}\n\n`;
+  });
+
+  alert(summary);
+}
+
+// -------------------------------
+// Geocoding helpers
+// -------------------------------
 function geocodeLatLng(lat, lng) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === "OK" && results?.length) resolve(results[0]);
-      else resolve(null);
+      if (status === "OK" && results && results.length) {
+        resolve(results[0]);
+      } else {
+        resolve(null);
+      }
     });
   });
 }
 
 function getComponent(components, type) {
-  const x = components.find(ac => ac.types.includes(type));
-  return x ? x.long_name : "";
+  const c = components.find((ac) => ac.types.includes(type));
+  return c ? c.long_name : "";
 }
 
 function formatAddressFromResult(result) {
-  const comps = result.address_components;
+  const comps = result.address_components || [];
   const house = getComponent(comps, "street_number");
-  const road  = getComponent(comps, "route");
-  const city  = getComponent(comps, "locality");
+  const road = getComponent(comps, "route");
+  const city = getComponent(comps, "locality");
 
   if (!house || !road || !city) return null;
   return `${house} ${road}, ${city}, IL`;
 }
 
-// random anywhere in Decatur
+// City-wide random (fallback)
 async function getRandomDecaturAddressCityWide() {
   for (let i = 0; i < 40; i++) {
     const lat = rand(decaturBounds.minLat, decaturBounds.maxLat);
@@ -1903,24 +1954,34 @@ async function getRandomDecaturAddressCityWide() {
     const label = formatAddressFromResult(result);
     if (!label) continue;
 
-    const city = getComponent(result.address_components, "locality").toLowerCase();
-    if (city !== "decatur") continue;
+    const comps = result.address_components || [];
+    const city =
+      getComponent(comps, "locality") ||
+      getComponent(comps, "postal_town") ||
+      "";
+    if (city.toLowerCase() !== "decatur") continue;
 
     return { lat, lng, label };
   }
-  throw new Error("Couldn't find a random Decatur address.");
+
+  throw new Error("Could not find a random Decatur address. Try again.");
 }
 
-// -------------------------------------------
-// Sampling inside polygons
-// -------------------------------------------
+// -------------------------------
+// Sampling within station polygons
+// -------------------------------
 function getPolygonsForStation(stationId) {
-  return stationZonePolygons.filter(z => z.stationId === stationId).map(z => z.polygon);
+  return stationZonePolygons
+    .filter((z) => z.stationId === stationId)
+    .map((z) => z.polygon);
 }
 
 function getRandomPointInPolygon(polygon) {
   const bounds = new google.maps.LatLngBounds();
-  polygon.getPath().forEach(pt => bounds.extend(pt));
+  const path = polygon.getPath();
+  for (let i = 0; i < path.getLength(); i++) {
+    bounds.extend(path.getAt(i));
+  }
 
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
@@ -1929,118 +1990,193 @@ function getRandomPointInPolygon(polygon) {
     const lat = rand(sw.lat(), ne.lat());
     const lng = rand(sw.lng(), ne.lng());
     const point = new google.maps.LatLng(lat, lng);
-
-    if (google.maps.geometry.poly.containsLocation(point, polygon)) return point;
+    if (google.maps.geometry.poly.containsLocation(point, polygon)) {
+      return point;
+    }
   }
 
-  return polygon.getPath().getAt(0);
+  return path.getAt(0);
 }
 
 async function getRandomAddressInStationZone(stationId) {
-  const polys = getPolygonsForStation(stationId);
-  if (!polys.length) return getRandomDecaturAddressCityWide();
+  const polygons = getPolygonsForStation(stationId);
+  if (!polygons.length) {
+    return getRandomDecaturAddressCityWide();
+  }
 
-  for (let i = 0; i < 80; i++) {
-    const poly = polys[Math.floor(Math.random() * polys.length)];
-    const pt = getRandomPointInPolygon(poly);
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const polygon =
+      polygons[Math.floor(Math.random() * polygons.length)];
+    const point = getRandomPointInPolygon(polygon);
+    const lat = point.lat();
+    const lng = point.lng();
 
-    const result = await geocodeLatLng(pt.lat(), pt.lng());
+    const result = await geocodeLatLng(lat, lng);
     if (!result) continue;
 
     const label = formatAddressFromResult(result);
     if (!label) continue;
 
-    const city = getComponent(result.address_components, "locality").toLowerCase();
-    if (city !== "decatur") continue;
+    const comps = result.address_components || [];
+    const city =
+      getComponent(comps, "locality") ||
+      getComponent(comps, "postal_town") ||
+      "";
+    if (city.toLowerCase() !== "decatur") continue;
 
-    return { lat: pt.lat(), lng: pt.lng(), label, stationId };
+    return { lat, lng, label, stationId };
   }
 
-  throw new Error(`Could not find address in Station ${stationId} zone.`);
+  throw new Error(
+    `Could not find a random address in Station ${stationId}'s zone.`
+  );
 }
 
 async function getRandomAddressForDrill() {
-  const selected = stationSelect.value; // "any" or number
+  const selected = stationSelect.value; // "any" or "1".."7"
 
-  const availableIds = [...new Set(stationZonePolygons.map(z => z.stationId))];
-  if (!availableIds.length) return getRandomDecaturAddressCityWide();
+  const availableStationIds = [
+    ...new Set(stationZonePolygons.map((z) => z.stationId)),
+  ];
 
-  const stationId =
-    selected === "any"
-      ? availableIds[Math.floor(Math.random() * availableIds.length)]
-      : selected;
+  if (!availableStationIds.length) {
+    return getRandomDecaturAddressCityWide();
+  }
 
-  return getRandomAddressInStationZone(stationId);
+  let stationIdToUse;
+
+  if (selected === "any") {
+    stationIdToUse =
+      availableStationIds[
+        Math.floor(Math.random() * availableStationIds.length)
+      ];
+  } else {
+    stationIdToUse = selected;
+  }
+
+  return getRandomAddressInStationZone(stationIdToUse);
 }
 
-// -------------------------------------------
-// Drill system
-// -------------------------------------------
+// -------------------------------
+// Drill reset
+// -------------------------------
 function resetDrill() {
-  if (actualMarker) { actualMarker.setMap(null); actualMarker = null; }
-  if (guessMarker)  { guessMarker.setMap(null); guessMarker = null; }
+  if (actualMarker) {
+    actualMarker.setMap(null);
+    actualMarker = null;
+  }
+  if (guessMarker) {
+    guessMarker.setMap(null);
+    guessMarker = null;
+  }
   if (clickListener) {
     google.maps.event.removeListener(clickListener);
     clickListener = null;
   }
+  if (currentRoutePolyline) {
+    currentRoutePolyline.setMap(null);
+    currentRoutePolyline = null;
+  }
+  currentRoutePath = [];
+  currentRouteAnswer = null;
 }
 
+// -------------------------------
+// Classic Drill / Distance Game
+// -------------------------------
 async function runDrill(isGameRound) {
   resetDrill();
+
+  const sel = stationSelect.value;
+  if (isGameRound) {
+    setStatus(
+      sel === "any"
+        ? `Round ${currentRound}/${gameRoundsTotal}: random station zone…`
+        : `Round ${currentRound}/${gameRoundsTotal}: Station ${sel} zone…`
+    );
+  } else {
+    setStatus(
+      sel === "any"
+        ? "Single drill: random station zone…"
+        : `Single drill: Station ${sel} zone…`
+    );
+  }
+
   addressSpan.textContent = "Searching…";
 
-  let addr;
+  let addrInfo;
   try {
-    addr = await getRandomAddressForDrill();
-  } catch (e) {
-    setStatus(e.message);
-    addressSpan.textContent = "None";
+    addrInfo = await getRandomAddressForDrill();
+  } catch (err) {
+    console.error(err);
+    addressSpan.textContent = "None – try again";
+    setStatus(err.message || "Couldn't find a valid address.");
     return;
   }
 
-  const sLabel = addr.stationId || (stationSelect.value === "any" ? "?" : stationSelect.value);
-  addressSpan.textContent = `${addr.label} (S${sLabel})`;
+  const stationLabel =
+    addrInfo.stationId ||
+    (stationSelect.value === "any" ? "?" : stationSelect.value);
+
+  addressSpan.textContent = `${addrInfo.label} (S${stationLabel})`;
+  setStatus(
+    isGameRound
+      ? `Round ${currentRound}/${gameRoundsTotal}: Click where you think this address is.`
+      : "Click on the map where you think this address is."
+  );
 
   actualMarker = new google.maps.Marker({
-    position: { lat: addr.lat, lng: addr.lng },
+    position: { lat: addrInfo.lat, lng: addrInfo.lng },
     map,
     opacity: 0,
   });
 
-  setStatus(isGameRound
-    ? `Round ${currentRound}/${gameRoundsTotal}: Click your guess.`
-    : "Click your guess."
-  );
-
-  clickListener = map.addListener("click", async (e) => {
+  // User clicks once, we immediately grade
+  clickListener = map.addListener("click", (e) => {
     if (guessMarker) guessMarker.setMap(null);
-    guessMarker = new google.maps.Marker({ position: e.latLng, map });
+    guessMarker = new google.maps.Marker({
+      position: e.latLng,
+      map,
+    });
 
+    // Reveal correct location
     actualMarker.setOpacity(1);
 
-    const distMeters =
-      google.maps.geometry.spherical.computeDistanceBetween(e.latLng, actualMarker.getPosition());
-    const distFeet = metersToFeet(distMeters);
+    const from = e.latLng;
+    const to = new google.maps.LatLng(addrInfo.lat, addrInfo.lng);
 
+    const distMeters =
+      google.maps.geometry.spherical.computeDistanceBetween(from, to);
+    const distFeet = metersToFeet(distMeters);
     const points = scoreFromFeet(distFeet);
 
-    // Info window
-    new google.maps.InfoWindow({
-      content: `<b>${addr.label}</b><br>${distFeet.toFixed(0)} ft`,
-      position: actualMarker.getPosition(),
-    }).open(map, actualMarker);
+    const info = new google.maps.InfoWindow({
+      content: `<b>${addrInfo.label}</b><br>${distFeet.toFixed(
+        0
+      )} ft<br>${points} pts`,
+      position: { lat: addrInfo.lat, lng: addrInfo.lng },
+    });
+    info.open(map, actualMarker);
 
-    // For game mode:
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(actualMarker.getPosition());
+    bounds.extend(guessMarker.getPosition());
+    map.fitBounds(bounds);
+
     if (isGameRound && gameActive) {
       totalScore += points;
-
       gameHistory.push({
         round: currentRound,
-        address: addr.label,
+        address: addrInfo.label,
         distanceFeet: distFeet,
         points,
       });
 
+      setStatus(
+        `Round ${currentRound}: ${distFeet.toFixed(
+          0
+        )} ft → ${points} pts. Total score: ${totalScore} (lower is better).`
+      );
       updateGameUI();
 
       if (currentRound >= gameRoundsTotal) {
@@ -2048,44 +2184,241 @@ async function runDrill(isGameRound) {
         updateGameUI();
         setTimeout(showFinalResults, 300);
       } else {
-        setTimeout(startGameRound, 1500);
+        setTimeout(() => {
+          if (gameActive) startGameRound();
+        }, 1500);
       }
+    } else if (!isGameRound) {
+      setStatus(
+        'Single drill complete. Click "Single Drill" for another address.'
+      );
     }
 
-    setStatus("Drill complete.");
     google.maps.event.removeListener(clickListener);
+    clickListener = null;
   });
 }
 
 function startSingleDrill() {
   gameActive = false;
+  routeGameActive = false;
   currentRound = 0;
   totalScore = 0;
   gameHistory = [];
+  routeCurrentRound = 0;
+  routeTotalScore = 0;
+  routeHistory = [];
   updateGameUI();
+
   runDrill(false);
 }
 
 function startGame() {
   gameActive = true;
+  routeGameActive = false;
   currentRound = 0;
   totalScore = 0;
   gameHistory = [];
+  routeCurrentRound = 0;
+  routeTotalScore = 0;
+  routeHistory = [];
   updateGameUI();
   startGameRound();
 }
 
 function startGameRound() {
   if (!gameActive) return;
-  currentRound++;
+  currentRound += 1;
   updateGameUI();
   runDrill(true);
 }
 
-// -------------------------------------------
-// Parse GeoJSON → Stations + Polygons
-// -------------------------------------------
+// -------------------------------
+// Route Game
+// -------------------------------
+async function startRouteRound() {
+  if (!routeGameActive) return;
+  resetDrill();
+
+  routeCurrentRound += 1;
+  updateGameUI();
+
+  const sel = stationSelect.value;
+  setStatus(
+    sel === "any"
+      ? `Route round ${routeCurrentRound}/${routeRoundsTotal}: random station zone…`
+      : `Route round ${routeCurrentRound}/${routeRoundsTotal}: Station ${sel} zone…`
+  );
+  addressSpan.textContent = "Searching…";
+
+  let addrInfo;
+  try {
+    addrInfo = await getRandomAddressForDrill();
+  } catch (err) {
+    console.error(err);
+    addressSpan.textContent = "None – try again";
+    setStatus(err.message || "Couldn't find a valid address.");
+    return;
+  }
+
+  currentRouteAnswer = addrInfo;
+  currentRouteStationId =
+    addrInfo.stationId ||
+    (stationSelect.value === "any" ? null : stationSelect.value);
+
+  const stationLabel =
+    currentRouteStationId || (stationSelect.value === "any" ? "?" : "unknown");
+
+  addressSpan.textContent = `${addrInfo.label} (S${stationLabel})`;
+
+  actualMarker = new google.maps.Marker({
+    position: { lat: addrInfo.lat, lng: addrInfo.lng },
+    map,
+    opacity: 0,
+  });
+
+  currentRoutePath = [];
+
+  // Set up click handler: build route from station to guess.
+  clickListener = map.addListener("click", (e) => {
+    const clickLatLng = e.latLng;
+
+    // First time: add station as starting point if we know it
+    if (currentRoutePath.length === 0) {
+      if (
+        currentRouteStationId &&
+        STATIONS_BY_ID[currentRouteStationId]
+      ) {
+        const st = STATIONS_BY_ID[currentRouteStationId];
+        currentRoutePath.push(
+          new google.maps.LatLng(st.lat, st.lng)
+        );
+      } else {
+        // fallback: start at first click
+        currentRoutePath.push(clickLatLng);
+      }
+    }
+
+    currentRoutePath.push(clickLatLng);
+
+    if (guessMarker) guessMarker.setMap(null);
+    guessMarker = new google.maps.Marker({
+      position: clickLatLng,
+      map,
+    });
+
+    if (!currentRoutePolyline) {
+      currentRoutePolyline = new google.maps.Polyline({
+        map,
+        path: currentRoutePath,
+        strokeColor: "#ffffff",
+        strokeOpacity: 1.0,
+        strokeWeight: 3,
+      });
+    } else {
+      currentRoutePolyline.setPath(currentRoutePath);
+    }
+
+    setStatus(
+      "Route updated. Click more points to refine, then press 'Submit Route'."
+    );
+  });
+
+  setStatus(
+    `Route Round ${routeCurrentRound}/${routeRoundsTotal}: ` +
+      "click along your route from the station to the address. " +
+      "Your last click is your address guess. Then press 'Submit Route'."
+  );
+}
+
+function startRouteGame() {
+  routeGameActive = true;
+  gameActive = false;
+
+  routeCurrentRound = 0;
+  routeTotalScore = 0;
+  routeHistory = [];
+  currentRound = 0;
+  totalScore = 0;
+  gameHistory = [];
+
+  resetDrill();
+  updateGameUI();
+  startRouteRound();
+}
+
+function submitRouteRound() {
+  if (!routeGameActive) {
+    setStatus('No route game running. Click "10-Address Route Game" first.');
+    return;
+  }
+  if (!currentRouteAnswer || !guessMarker) {
+    setStatus("Place your route/guess on the map before submitting.");
+    return;
+  }
+
+  // Stop accepting further clicks for this round
+  if (clickListener) {
+    google.maps.event.removeListener(clickListener);
+    clickListener = null;
+  }
+
+  const from = guessMarker.getPosition();
+  const to = new google.maps.LatLng(
+    currentRouteAnswer.lat,
+    currentRouteAnswer.lng
+  );
+
+  const distMeters =
+    google.maps.geometry.spherical.computeDistanceBetween(from, to);
+  const distFeet = metersToFeet(distMeters);
+  const points = scoreFromFeet(distFeet);
+
+  routeTotalScore += points;
+  routeHistory.push({
+    round: routeCurrentRound,
+    address: currentRouteAnswer.label,
+    distanceFeet: distFeet,
+    points,
+  });
+
+  actualMarker.setOpacity(1);
+
+  const bounds = new google.maps.LatLngBounds();
+  bounds.extend(to);
+  bounds.extend(from);
+  map.fitBounds(bounds);
+
+  new google.maps.InfoWindow({
+    content: `<b>${currentRouteAnswer.label}</b><br>${distFeet.toFixed(
+      0
+    )} ft<br>${points} pts`,
+    position: to,
+  }).open(map, actualMarker);
+
+  setStatus(
+    `Route round ${routeCurrentRound}: ${distFeet.toFixed(
+      0
+    )} ft → ${points} pts.`
+  );
+  updateGameUI();
+
+  if (routeCurrentRound >= routeRoundsTotal) {
+    routeGameActive = false;
+    updateGameUI();
+    setTimeout(showRouteFinalResults, 300);
+  } else {
+    setTimeout(() => {
+      if (routeGameActive) startRouteRound();
+    }, 1500);
+  }
+}
+
+// -------------------------------
+// GeoJSON → stations & zones
+// -------------------------------
 function parseStationIdFromProperties(props) {
+  if (!props) return null;
   for (const v of Object.values(props)) {
     const m = String(v).match(/(\d+)/);
     if (m) return m[1];
@@ -2094,39 +2427,56 @@ function parseStationIdFromProperties(props) {
 }
 
 function initZonesAndStationsFromGeoJSON() {
-  stationMarkers.forEach(m => m.setMap(null));
-  stationZonePolygons.forEach(z => z.polygon.setMap(null));
+  if (!map) return;
+
+  stationMarkers.forEach((m) => m.setMap(null));
   stationMarkers = [];
+  stationZonePolygons.forEach(({ polygon }) => polygon.setMap(null));
   stationZonePolygons = [];
 
-  RESPONSE_ZONES_GEOJSON.features.forEach(feature => {
+  (RESPONSE_ZONES_GEOJSON.features || []).forEach((feature) => {
+    if (!feature.geometry) return;
     const geom = feature.geometry;
-    const props = feature.properties;
-    if (!geom || !props) return;
-
+    const props = feature.properties || {};
     const stationId = parseStationIdFromProperties(props);
     if (!stationId) return;
 
-    const color = STATION_COLORS[stationId];
+    const color = STATION_COLORS[stationId] || "#999999";
 
-    // Station Marker
     if (geom.type === "Point") {
       const [lng, lat] = geom.coordinates;
+      const position = { lat, lng };
+      const name = `Station ${stationId}`;
+
+      STATIONS_BY_ID[stationId] = {
+        id: stationId,
+        name,
+        lat,
+        lng,
+      };
+
       const marker = new google.maps.Marker({
-        position: { lat, lng },
+        position,
         map,
-        label: { text: stationId, color: "white", fontWeight: "bold" },
-        title: `Station ${stationId}`,
+        title: name,
+        label: {
+          text: stationId,
+          color: "white",
+          fontWeight: "bold",
+        },
       });
+
       stationMarkers.push(marker);
     }
 
-    // Station Zone Polygon
     if (geom.type === "Polygon") {
-      const ring = geom.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
+      const rings = geom.coordinates;
+      if (!rings || !rings.length) return;
+
+      const outerPath = rings[0].map(([lng, lat]) => ({ lat, lng }));
 
       const polygon = new google.maps.Polygon({
-        paths: ring,
+        paths: outerPath,
         strokeColor: color,
         strokeOpacity: 0.9,
         strokeWeight: 2,
@@ -2140,15 +2490,17 @@ function initZonesAndStationsFromGeoJSON() {
   });
 
   applyZoneVisibility();
-  setStatus("Stations & zones ready.");
+  setStatus("Stations & response zones loaded. Choose a mode to start.");
 }
 
-// -------------------------------------------
-// Initialize Map
-// -------------------------------------------
+// -------------------------------
+// initMap (Google callback)
+// -------------------------------
 function initMap() {
+  const center = { lat: 39.8425, lng: -88.9531 };
+
   map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 39.8425, lng: -88.9531 },
+    center,
     zoom: 13,
     mapTypeId: "roadmap",
     styles: [],
@@ -2158,11 +2510,14 @@ function initMap() {
 
   newDrillBtn.addEventListener("click", startSingleDrill);
   startGameBtn.addEventListener("click", startGame);
+  startRouteGameBtn.addEventListener("click", startRouteGame);
+  submitRouteBtn.addEventListener("click", submitRouteRound);
   streetNamesCheckbox.addEventListener("change", applyMapStyle);
   zonesCheckbox.addEventListener("change", applyZoneVisibility);
 
   applyMapStyle();
   updateGameUI();
+  setStatus("Loading stations & zones…");
 
   initZonesAndStationsFromGeoJSON();
 }
