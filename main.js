@@ -46,7 +46,7 @@ function applyMapStyle() {
   if (showStreetNames) {
     map.setOptions({ styles: [] }); // default Google with labels
   } else {
-    map.setOptions({ styles: NO_LABELS_STYLE });
+    map.setOptions({ styles: NO_LABELS_STYLE }); // Snazzy style, labels off
   }
 }
 
@@ -153,7 +153,7 @@ function resetRoute() {
 function initMapCore() {
   const center = { lat: 39.8425, lng: -88.9531 };
 
-  // ~20 mile restriction box
+  // ~20 mile restriction box from center
   const latDelta = 0.29;
   const lngDelta = 0.38;
   const viewBounds = {
@@ -393,7 +393,7 @@ async function getRandomAddressForStation(station) {
 }
 
 // -------------------------------------------
-// DRILL + GUESS LOGIC
+// DRILL + GUESS LOGIC (NO ZOOM ON NEW DRILL)
 // -------------------------------------------
 async function startNewDrill() {
   if (!stationsReady) {
@@ -425,14 +425,15 @@ async function startNewDrill() {
     addressSpan.textContent = addrInfo.label;
     setStatus("Click on the map where you think this address is.");
 
+    // Add actual marker but keep it invisible until after the guess
     actualMarker = new google.maps.Marker({
       position: { lat: addrInfo.lat, lng: addrInfo.lng },
       map,
       opacity: 0,
     });
 
-    map.setCenter({ lat: addrInfo.lat, lng: addrInfo.lng });
-    map.setZoom(15);
+    // IMPORTANT: do NOT change center/zoom here
+    // (no map.setCenter / map.setZoom)
 
     clickListener = map.addListener("click", (e) => {
       if (guessMarker) guessMarker.setMap(null);
@@ -464,7 +465,6 @@ async function startNewDrill() {
       google.maps.event.removeListener(clickListener);
       clickListener = null;
 
-      // Now enable routing step (if a station was chosen)
       if (!currentStation) {
         setStatus(
           "Drill complete. Choose a specific station (not 'Any') if you want to practice routing."
@@ -475,7 +475,7 @@ async function startNewDrill() {
         );
         startRouteBtn.disabled = false;
         clearRouteBtn.disabled = false;
-        submitRouteBtn.disabled = true; // until at least one segment
+        submitRouteBtn.disabled = true;
       }
     });
   } catch (err) {
@@ -590,7 +590,6 @@ function submitUserRoute() {
         strokeWeight: 4,
       });
 
-      // Compute lengths
       const userLenMeters = polyLengthMeters(userRoutePoints);
       const optimalLenMeters = polyLengthMeters(path);
       const userMiles = userLenMeters / 1609.34;
@@ -649,7 +648,6 @@ function wireUI() {
   clearRouteBtn.addEventListener("click", clearUserRoute);
   submitRouteBtn.addEventListener("click", submitUserRoute);
 
-  // Initially routing buttons are disabled; enabled after a completed guess
   startRouteBtn.disabled = true;
   clearRouteBtn.disabled = true;
   submitRouteBtn.disabled = true;
