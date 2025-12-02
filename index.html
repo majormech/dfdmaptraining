@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Decatur Address Drill – Google + Snazzy</title>
+  <title>Decatur Address Drill – Stations & Zones</title>
 
   <style>
     * { box-sizing: border-box; }
@@ -43,7 +43,7 @@
 
     .controls button {
       padding: 0.5rem 1.25rem;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       border-radius: 8px;
       border: 2px solid #333;
       background: #fff;
@@ -55,20 +55,28 @@
       color: #fff;
     }
 
-    label {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
+    .controls select {
+      padding: 0.35rem 0.75rem;
       font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #666;
     }
 
-    input[type="checkbox"] {
-      transform: scale(1.2);
+    label.toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.95rem;
+      user-select: none;
+    }
+
+    label.toggle input[type="checkbox"] {
+      transform: scale(1.1);
     }
 
     #address {
       font-weight: 600;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
     }
 
     #status {
@@ -76,10 +84,9 @@
       color: #444;
     }
 
-    /* Give the map a solid height */
     #map {
       width: 100%;
-      height: calc(100vh - 150px); /* header + controls ≈ 150px */
+      height: calc(100vh - 150px);
     }
 
     @media (max-width: 768px) {
@@ -95,9 +102,9 @@
 </head>
 <body>
   <header>
-    <h1>Decatur Address Drill – Google + Snazzy</h1>
+    <h1>Decatur Address Drill – Stations & Zones</h1>
     <small>
-      Click "New Drill" to get a random address in Decatur. Then click the map where you think it is.
+      Pick a station, then click "New Drill" to get a random address inside that station’s response zone.
     </small>
   </header>
 
@@ -105,6 +112,25 @@
     <button id="new-drill">New Drill</button>
 
     <label>
+      Station:
+      <select id="station-select">
+        <option value="any">Any Station</option>
+        <option value="1">Station 1 – Red</option>
+        <option value="2">Station 2 – Blue</option>
+        <option value="3">Station 3 – Green</option>
+        <option value="4">Station 4 – Orange</option>
+        <option value="5">Station 5 – Purple</option>
+        <option value="6">Station 6 – Teal</option>
+        <option value="7">Station 7 – Yellow</option>
+      </select>
+    </label>
+
+    <label class="toggle">
+      <input type="checkbox" id="toggle-zones" checked />
+      Show station zones
+    </label>
+
+    <label class="toggle">
       <input type="checkbox" id="toggle-street-names" checked />
       Street names
     </label>
@@ -115,14 +141,15 @@
 
   <div id="map"></div>
 
-<!-- Your app logic (defines window.initMap) -->
-<script src="main.js"></script>
+  <!-- App logic -->
+  <script src="main.js"></script>
 
-<!-- Google Maps JS with YOUR key -->
-<script
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry&callback=initMap"
-  async
-  defer
-></script>
+  <!-- Google Maps JS (keep your real key here) -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry&callback=initMap"
+    async
+    defer
+  ></script>
 </body>
 </html>
+
