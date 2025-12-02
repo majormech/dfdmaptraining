@@ -2,148 +2,125 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Decatur Address Drill</title>
+  <title>Decatur Address Drill – v1</title>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
 
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       display: flex;
       flex-direction: column;
-      background: #f8f8f8;
+      background: #f5f5f5;
     }
+
     header {
-      padding: 1rem;
+      padding: 0.75rem 1rem;
       background: #20232a;
       color: #fff;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 0.25rem;
     }
+
     header h1 {
-      font-size: 1.6rem;
       margin: 0;
+      font-size: 1.4rem;
     }
+
     header small {
-      font-size: 1rem;
-      opacity: 0.8;
+      font-size: 0.95rem;
+      opacity: 0.85;
     }
+
     .controls {
-      padding: 0.75rem;
+      padding: 0.75rem 1rem;
       background: #ffffff;
-      border-bottom: 2px solid #ccc;
+      border-bottom: 1px solid #ccc;
       display: flex;
       flex-wrap: wrap;
       gap: 0.75rem;
       align-items: center;
-      font-size: 1.4rem; /* ~175% */
+      font-size: 1rem;
     }
-    .controls button {
-      padding: 0.6rem 1.2rem;
-      font-size: 1.3rem;
+
+    #new-drill {
+      padding: 0.5rem 1.25rem;
+      font-size: 1.1rem;
       border-radius: 8px;
       border: 2px solid #333;
       background: #fff;
       cursor: pointer;
     }
-    .controls button:disabled {
-      opacity: 0.4;
-      cursor: default;
+
+    #new-drill:hover {
+      background: #333;
+      color: #fff;
     }
-    select {
-      font-size: 1.4rem;
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      border: 2px solid #666;
-      background: #fff;
-    }
-    label {
-      font-size: 1.4rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-    input[type="checkbox"] {
-      transform: scale(1.4);
-    }
+
     #address {
-      font-weight: bold;
-      font-size: 1.5rem;
+      font-weight: 600;
+      font-size: 1.1rem;
     }
+
     #status {
-      font-size: 1.2rem;
-      margin-left: 0.5rem;
+      font-size: 0.95rem;
+      color: #444;
     }
+
     #map {
       flex: 1;
       width: 100%;
     }
+
     @media (max-width: 768px) {
       .controls {
         flex-direction: column;
         align-items: flex-start;
       }
-      #status {
-        margin-left: 0;
-      }
     }
   </style>
 </head>
 <body>
-
   <header>
-    <h1>Decatur Address Drill</h1>
-    <small>Guess the address, then plan your route from the station.</small>
+    <h1>Decatur Address Drill – v1</h1>
+    <small>
+      Click "New Drill" to get a random address in Decatur. Then click the map where you think it is.
+    </small>
   </header>
 
   <div class="controls">
     <button id="new-drill">New Drill</button>
 
-    <button id="start-route" disabled>Start Route</button>
-    <button id="clear-route" disabled>Clear Route</button>
-    <button id="submit-route" disabled>Submit Route</button>
+    <span>Address: <span id="address">None yet</span></span>
 
-    <label>
-      Station:
-      <select id="station-select">
-        <option value="any">Any Station</option>
-        <option value="1">Station 1 – HQ</option>
-        <option value="2">Station 2</option>
-        <option value="3">Station 3</option>
-        <option value="4">Station 4</option>
-        <option value="5">Station 5</option>
-        <option value="6">Station 6</option>
-        <option value="7">Station 7</option>
-      </select>
-    </label>
-
-    <label>
-      Map:
-      <select id="basemap-select">
-        <option value="road">Road</option>
-        <option value="satellite">Satellite</option>
-      </select>
-    </label>
-
-    <label>
-      <input type="checkbox" id="toggle-street-names" checked />
-      Street names
-    </label>
-
-    <span>Address: <span id="address">None yet – click “New Drill”</span></span>
     <span id="status">Ready</span>
   </div>
 
   <div id="map"></div>
 
-  <!-- Google Maps JS (use your restricted key) -->
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry"></script>
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-VuZ8H8S2xNbtC2v7Dw8GkS+aoCAx4AUWcC2hBqYtW70="
+    crossorigin=""
+  ></script>
 
-  <!-- Turf.js (Voronoi, point-in-polygon, etc.) -->
-  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
-
-  <!-- Main logic -->
+  <!-- main logic -->
   <script src="main.js"></script>
 </body>
 </html>
