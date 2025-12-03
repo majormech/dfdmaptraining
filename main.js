@@ -2051,9 +2051,9 @@ function updateRoutePolyline() {
     currentRoutePolyline = new google.maps.Polyline({
       map,
       path: currentRoutePath,
-      strokeColor: "#ffffff",
+      strokeColor: "#FF0000",       // 🔴 red route line
       strokeOpacity: 1.0,
-      strokeWeight: 3,
+      strokeWeight: 4,
     });
   } else {
     currentRoutePolyline.setPath(currentRoutePath);
@@ -2177,7 +2177,13 @@ async function runDrill(isGameRound) {
     const points = scoreFromFeet(distFeet);
 
     const info = new google.maps.InfoWindow({
-      content: `<b>${addrInfo.label}</b><br>${distFeet.toFixed(0)} ft<br>${points} pts`,
+      content: `
+        <div class="info-window">
+          <b>${addrInfo.label}</b><br>
+          ${distFeet.toFixed(0)} ft<br>
+          ${points} pts
+        </div>
+      `,
       position: { lat: addrInfo.lat, lng: addrInfo.lng },
     });
     info.open(map, actualMarker);
@@ -2431,7 +2437,13 @@ function submitRouteRound() {
   map.fitBounds(bounds);
 
   new google.maps.InfoWindow({
-    content: `<b>${currentRouteAnswer.label}</b><br>${distFeet.toFixed(0)} ft<br>${points} pts`,
+    content: `
+      <div class="info-window">
+        <b>${currentRouteAnswer.label}</b><br>
+        ${distFeet.toFixed(0)} ft<br>
+        ${points} pts
+      </div>
+    `,
     position: to,
   }).open(map, actualMarker);
 
