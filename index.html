@@ -96,8 +96,8 @@
     }
 
     .info-line {
-      margin-top: 0.35rem;
-      font-size: 0.85rem;
+      margin-top: 0.25rem;
+      font-size: 0.9rem;
       display: flex;
       flex-wrap: wrap;
       gap: 0.6rem;
@@ -108,11 +108,10 @@
       font-weight: 600;
     }
 
-    /* Address 100% larger */
+    /* Make the address bigger (100%+ larger than base) */
     #address {
-      font-size: 1.6rem;
-      font-weight: 600;
-      line-height: 1.2;
+      font-size: 1.8rem;
+      font-weight: 700;
     }
 
     #map {
@@ -154,8 +153,8 @@
           Single Drill
         </button>
 
-        <button id="single-route-drill" class="btn secondary">
-          Single Route Drill
+        <button id="route-drill" class="btn secondary">
+          Route Drill
         </button>
 
         <button id="start-game" class="btn">
@@ -212,8 +211,10 @@
     <div id="map"></div>
   </div>
 
+  <!-- Your JS (GeoJSON must be defined before this) -->
   <script src="main.js"></script>
 
+  <!-- Google Maps API -->
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry&callback=initMap"
     async
