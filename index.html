@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+head>
   <meta charset="UTF-8" />
-  <title>Decatur Fire Map Trainer</title>
+  <title>Decatur FD Drill Trainer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
@@ -123,7 +123,7 @@
       cursor: pointer;
     }
 
-    /* 🔴 Hide floating controls when header is collapsed */
+    /* Hide floating controls when header is collapsed */
     #header.collapsed ~ #floating-controls {
       display: none;
     }
@@ -234,7 +234,7 @@
             toggleHeaderBtn.textContent = "Hide Controls ▲";
           }
 
-          // Optional: trigger map resize if global map is exposed
+          // Trigger map resize if global map is exposed
           setTimeout(() => {
             if (window.google && window.google.maps && window.map) {
               google.maps.event.trigger(window.map, "resize");
@@ -246,3 +246,4 @@
   </script>
 </body>
 </html>
+
