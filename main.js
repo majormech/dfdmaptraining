@@ -1755,6 +1755,7 @@ let gameScoreSpan;
 
 let map;
 let geocoder;
+let directionsService; // 🔹 for Google optimal routes
 
 // Rough city fallback box
 const decaturBounds = {
@@ -1830,7 +1831,7 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
-// Shared scoring rules
+// Distance game scoring (address guess)
 function scoreFromFeet(distFeet) {
   if (distFeet <= 150) {
     return 1;
@@ -1845,6 +1846,30 @@ function scoreFromFeet(distFeet) {
     const t = Math.min(Math.max((distFeet - minD) / (maxD - minD), 0), 1);
     return Math.round(301 + t * (750 - 301));
   } else {
+    return 1000;
+  }
+}
+
+// 🔹 Route scoring: compare extra distance vs Google's best route
+function routeScoreFromExtraPercent(extraPercent) {
+  // extraPercent is e.g. 0.1 for 10% longer than optimal
+  if (extraPercent <= 0.05) {
+    // within 5% of best
+    return 1;
+  } else if (extraPercent <= 0.2) {
+    // 5–20% → 2–300 pts
+    const minP = 0.05;
+    const maxP = 0.2;
+    const t = Math.min(Math.max((extraPercent - minP) / (maxP - minP), 0), 1);
+    return Math.round(2 + t * (300 - 2));
+  } else if (extraPercent <= 0.5) {
+    // 20–50% → 301–750 pts
+    const minP = 0.2;
+    const maxP = 0.5;
+    const t = Math.min(Math.max((extraPercent - minP) / (maxP - minP), 0), 1);
+    return Math.round(301 + t * (750 - 301));
+  } else {
+    // >50% longer
     return 1000;
   }
 }
@@ -1899,11 +1924,15 @@ function showFinalResults() {
 function showRouteFinalResults() {
   let summary = "10-Address Route Game Complete\n\n";
   summary += `Total Route Score: ${routeTotalScore}\n\n`;
-  summary += "Round details:\n\n";
+  summary += "Round details (compared to Google's best route):\n\n";
 
   routeHistory.forEach((entry) => {
     summary += `Round ${entry.round}: ${entry.address}\n`;
-    summary += `  Distance: ${entry.distanceFeet.toFixed(0)} ft, Points: ${entry.points}\n\n`;
+    summary += `  Address error: ${entry.addressFeet.toFixed(0)} ft\n`;
+    summary += `  Your route: ${entry.userMiles.toFixed(2)} mi\n`;
+    summary += `  Best route: ${entry.bestMiles.toFixed(2)} mi\n`;
+    summary += `  Extra: ${entry.extraFeet.toFixed(0)} ft (${(entry.extraPercent * 100).toFixed(1)}%)\n`;
+    summary += `  Points: ${entry.points}\n\n`;
   });
 
   alert(summary);
@@ -2051,7 +2080,7 @@ function updateRoutePolyline() {
     currentRoutePolyline = new google.maps.Polyline({
       map,
       path: currentRoutePath,
-      strokeColor: "#FF0000",       // 🔴 red route line
+      strokeColor: "#FF0000", // 🔴 red route line
       strokeOpacity: 1.0,
       strokeWeight: 4,
     });
@@ -2180,8 +2209,8 @@ async function runDrill(isGameRound) {
       content: `
         <div class="info-window">
           <b>${addrInfo.label}</b><br>
-          ${distFeet.toFixed(0)} ft<br>
-          ${points} pts
+          Address error: ${distFeet.toFixed(0)} ft<br>
+          Points: ${points}
         </div>
       `,
       position: { lat: addrInfo.lat, lng: addrInfo.lng },
@@ -2326,7 +2355,7 @@ async function startRouteRound() {
   clickListener = map.addListener("click", (e) => {
     const clickLatLng = e.latLng;
 
-    // First point: station start if we know it
+    // First point: force start at station if known
     if (currentRoutePath.length === 0) {
       if (currentRouteStationId && STATIONS_BY_ID[currentRouteStationId]) {
         const st = STATIONS_BY_ID[currentRouteStationId];
@@ -2400,14 +2429,15 @@ function startSingleRouteDrill() {
   startRouteRound();
 }
 
-function submitRouteRound() {
+// 🔹 Submit route: compare to Google's best route
+async function submitRouteRound() {
   if (!routeGameActive && !singleRouteActive) {
     setStatus(
       'No route game or single route drill running. Choose "Single Route Drill" or "10-Address Route Game".'
     );
     return;
   }
-  if (!currentRouteAnswer || !guessMarker) {
+  if (!currentRouteAnswer || !guessMarker || currentRoutePath.length < 2) {
     setStatus("Place your route/guess on the map before submitting.");
     return;
   }
@@ -2421,13 +2451,127 @@ function submitRouteRound() {
     routeRightClickListener = null;
   }
 
+  // Address error (guess vs actual)
   const from = guessMarker.getPosition();
   const to = new google.maps.LatLng(currentRouteAnswer.lat, currentRouteAnswer.lng);
 
   const distMeters =
     google.maps.geometry.spherical.computeDistanceBetween(from, to);
   const distFeet = metersToFeet(distMeters);
-  const points = scoreFromFeet(distFeet);
+
+  // User route length
+  const userMeters = google.maps.geometry.spherical.computeLength(currentRoutePath);
+  const userMiles = userMeters / 1609.34;
+
+  // Origin for best route: station if known, else first path point
+  let origin;
+  if (currentRouteStationId && STATIONS_BY_ID[currentRouteStationId]) {
+    const st = STATIONS_BY_ID[currentRouteStationId];
+    origin = { lat: st.lat, lng: st.lng };
+  } else {
+    const first = currentRoutePath[0];
+    origin = { lat: first.lat(), lng: first.lng() };
+  }
+
+  const destination = { lat: currentRouteAnswer.lat, lng: currentRouteAnswer.lng };
+
+  let bestMeters = null;
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      directionsService.route(
+        {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        },
+        (res, status) => {
+          if (status === "OK" && res && res.routes && res.routes.length) {
+            resolve(res);
+          } else {
+            reject(status);
+          }
+        }
+      );
+    });
+
+    const legs = result.routes[0].legs || [];
+    bestMeters = legs.reduce((sum, leg) => sum + (leg.distance?.value || 0), 0);
+  } catch (err) {
+    console.error("DirectionsService error:", err);
+    // Fall back: if directions fail, just use address-error scoring
+    const pointsFallback = scoreFromFeet(distFeet);
+    routeTotalScore += pointsFallback;
+
+    actualMarker.setOpacity(1);
+
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(to);
+    bounds.extend(from);
+    map.fitBounds(bounds);
+
+    new google.maps.InfoWindow({
+      content: `
+        <div class="info-window">
+          <b>${currentRouteAnswer.label}</b><br>
+          Address error: ${distFeet.toFixed(0)} ft<br>
+          (Directions unavailable, scoring by address only)<br>
+          Points: ${pointsFallback}
+        </div>
+      `,
+      position: to,
+    }).open(map, actualMarker);
+
+    if (routeGameActive) {
+      routeHistory.push({
+        round: routeCurrentRound,
+        address: currentRouteAnswer.label,
+        addressFeet: distFeet,
+        userMiles,
+        bestMiles: NaN,
+        extraFeet: NaN,
+        extraPercent: NaN,
+        points: pointsFallback,
+      });
+      setStatus(
+        `Route round ${routeCurrentRound}: ${distFeet.toFixed(
+          0
+        )} ft → ${pointsFallback} pts (fallback). Total: ${routeTotalScore}`
+      );
+      updateGameUI();
+
+      if (routeCurrentRound >= routeRoundsTotal) {
+        routeGameActive = false;
+        updateGameUI();
+        setTimeout(showRouteFinalResults, 300);
+      } else {
+        setTimeout(() => {
+          if (routeGameActive) startRouteRound();
+        }, 1500);
+      }
+    } else if (singleRouteActive) {
+      setStatus(
+        `Single route drill complete (fallback scoring): ${distFeet.toFixed(
+          0
+        )} ft → ${pointsFallback} pts.`
+      );
+      singleRouteActive = false;
+      updateGameUI();
+    }
+
+    return;
+  }
+
+  const bestMiles = bestMeters / 1609.34;
+
+  let extraMeters = userMeters - bestMeters;
+  if (extraMeters < 0) extraMeters = 0;
+  const extraFeet = metersToFeet(extraMeters);
+  const extraPercent = bestMeters > 0 ? extraMeters / bestMeters : 0;
+
+  const routePoints = routeScoreFromExtraPercent(extraPercent);
+
+  routeTotalScore += routePoints;
 
   actualMarker.setOpacity(1);
 
@@ -2440,25 +2584,32 @@ function submitRouteRound() {
     content: `
       <div class="info-window">
         <b>${currentRouteAnswer.label}</b><br>
-        ${distFeet.toFixed(0)} ft<br>
-        ${points} pts
+        Address error: ${distFeet.toFixed(0)} ft<br>
+        Your route: ${userMiles.toFixed(2)} mi<br>
+        Best route: ${bestMiles.toFixed(2)} mi<br>
+        Extra: ${extraFeet.toFixed(0)} ft (${(extraPercent * 100).toFixed(1)}%)<br>
+        Points: ${routePoints}
       </div>
     `,
     position: to,
   }).open(map, actualMarker);
 
   if (routeGameActive) {
-    routeTotalScore += points;
     routeHistory.push({
       round: routeCurrentRound,
       address: currentRouteAnswer.label,
-      distanceFeet: distFeet,
-      points,
+      addressFeet: distFeet,
+      userMiles,
+      bestMiles,
+      extraFeet,
+      extraPercent,
+      points: routePoints,
     });
+
     setStatus(
-      `Route round ${routeCurrentRound}: ${distFeet.toFixed(
-        0
-      )} ft → ${points} pts. Total: ${routeTotalScore}`
+      `Route round ${routeCurrentRound}: extra ${(extraPercent * 100).toFixed(
+        1
+      )}% → ${routePoints} pts. Total route score: ${routeTotalScore} (lower is better).`
     );
     updateGameUI();
 
@@ -2473,9 +2624,9 @@ function submitRouteRound() {
     }
   } else if (singleRouteActive) {
     setStatus(
-      `Single route drill complete: ${distFeet.toFixed(
-        0
-      )} ft → ${points} pts. Click "Single Route Drill" for another.`
+      `Single route drill complete: extra ${(extraPercent * 100).toFixed(
+        1
+      )}% → ${routePoints} pts.`
     );
     singleRouteActive = false;
     updateGameUI();
@@ -2564,7 +2715,7 @@ function initZonesAndStationsFromGeoJSON() {
 // initMap – Google callback
 // -------------------------------
 function initMap() {
-  // Grab DOM elements *after* DOM is ready
+  // Grab DOM elements
   newDrillBtn = document.getElementById("new-drill");
   singleRouteDrillBtn = document.getElementById("single-route-drill");
   startGameBtn = document.getElementById("start-game");
@@ -2589,13 +2740,16 @@ function initMap() {
   });
 
   geocoder = new google.maps.Geocoder();
+  directionsService = new google.maps.DirectionsService(); // 🔹
 
-  // Attach listeners only if elements exist (avoids null errors)
+  // Attach listeners
   if (newDrillBtn) newDrillBtn.addEventListener("click", startSingleDrill);
   if (singleRouteDrillBtn) singleRouteDrillBtn.addEventListener("click", startSingleRouteDrill);
   if (startGameBtn) startGameBtn.addEventListener("click", startGame);
   if (startRouteGameBtn) startRouteGameBtn.addEventListener("click", startRouteGame);
-  if (submitRouteBtn) submitRouteBtn.addEventListener("click", submitRouteRound);
+  if (submitRouteBtn) submitRouteBtn.addEventListener("click", () => {
+    submitRouteRound().catch((err) => console.error(err));
+  });
   if (clearRouteBtn) clearRouteBtn.addEventListener("click", clearRoute);
   if (streetNamesCheckbox) streetNamesCheckbox.addEventListener("change", applyMapStyle);
   if (zonesCheckbox) zonesCheckbox.addEventListener("change", applyZoneVisibility);
