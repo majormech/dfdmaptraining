@@ -2424,7 +2424,7 @@ function computeRouteMatchPercent(googlePath, userPath) {
   }
 
   // Simple approximation: for each Google point, check if there's a user point within threshold
-  const thresholdFeet = 250; // "close enough"
+  const thresholdFeet = 500; // "close enough"
   let matched = 0;
 
   for (let i = 0; i < googlePath.length; i++) {
