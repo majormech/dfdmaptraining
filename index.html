@@ -123,6 +123,11 @@
       cursor: pointer;
     }
 
+    /* 🔴 Hide floating controls when header is collapsed */
+    #header.collapsed ~ #floating-controls {
+      display: none;
+    }
+
     /* Info window content (black bubble) */
     .info-window {
       background: #000;
@@ -214,9 +219,8 @@
     defer
   ></script>
 
-  <!-- Optional: simple header collapse JS (can also be placed in main.js) -->
+  <!-- Header collapse JS -->
   <script>
-    // Simple header collapse independent from main.js
     document.addEventListener("DOMContentLoaded", () => {
       const header = document.getElementById("header");
       const toggleHeaderBtn = document.getElementById("toggle-header");
@@ -230,7 +234,7 @@
             toggleHeaderBtn.textContent = "Hide Controls ▲";
           }
 
-          // After the animation, trigger a map resize if available
+          // Optional: trigger map resize if global map is exposed
           setTimeout(() => {
             if (window.google && window.google.maps && window.map) {
               google.maps.event.trigger(window.map, "resize");
