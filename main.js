@@ -2300,7 +2300,7 @@ function ensureRoutePolyline() {
       map,
       strokeColor: "#FF0000",
       strokeOpacity: 1.0,
-      strokeWeight: 4,
+      strokeWeight: 8,
     });
   }
   return routePolyline;
@@ -2424,7 +2424,7 @@ function computeRouteMatchPercent(googlePath, userPath) {
   }
 
   // Simple approximation: for each Google point, check if there's a user point within threshold
-  const thresholdFeet = 150; // "close enough"
+  const thresholdFeet = 250; // "close enough"
   let matched = 0;
 
   for (let i = 0; i < googlePath.length; i++) {
@@ -2528,7 +2528,7 @@ function submitRoute() {
         path: googlePath,
         strokeColor: "#00FFFF",
         strokeOpacity: 0.7,
-        strokeWeight: 4,
+        strokeWeight: 8,
       });
 
       // Compute match %
