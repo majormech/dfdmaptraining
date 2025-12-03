@@ -2,186 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Decatur Address Drill</title>
+  <title>Decatur FD Drill Trainer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <style>
     html, body {
       height: 100%;
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #111;
       color: #f5f5f5;
     }
-    
-  .info-window {
-    background: #000;
-    color: #fff;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-  }
 
-    #app {
+    body {
       display: flex;
       flex-direction: column;
-      height: 100%;
     }
 
-    header {
-      background: #1f1f1f;
-      padding: 0.5rem 0.75rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-      z-index: 2;
+    /* Header / control panel */
+    #header {
+      background: #222;
+      color: white;
+      padding: 8px 10px;
+      border-bottom: 2px solid #333;
     }
 
-    .title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.4rem;
-      gap: 0.5rem;
-      flex-wrap: wrap;
+    .toggle-header-btn {
+      width: 100%;
+      padding: 8px 10px;
+      background: #444;
+      color: white;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      margin-bottom: 6px;
     }
 
-    .title-row h1 {
-      font-size: 1.1rem;
-      margin: 0;
+    #header-content {
+      overflow: hidden;
+      transition: max-height 0.4s ease, opacity 0.3s ease;
+      max-height: 600px;
+      opacity: 1;
     }
 
-    .game-summary {
-      font-size: 0.9rem;
-      opacity: 0.85;
+    #header.collapsed #header-content {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      margin-top: 0;
     }
 
     .controls-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 8px;
       align-items: center;
-      font-size: 0.9rem;
-      margin-bottom: 0.25rem;
+      margin-bottom: 6px;
     }
 
     .controls-row label {
-      white-space: nowrap;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    select,
-    input[type="checkbox"] {
+    select, button, input[type="checkbox"] {
       font-size: 0.9rem;
     }
 
-    .btn {
-      background: #2563eb;
-      border: none;
-      border-radius: 0.4rem;
-      padding: 0.4rem 0.75rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: #fff;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.25rem;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-      transition: background 0.15s ease, transform 0.1s ease;
-    }
-
-    .btn.secondary {
-      background: #4b5563;
-    }
-
-    .btn:active {
-      transform: scale(0.97);
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .info-line {
-      margin-top: 0.35rem;
-      font-size: 0.85rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
-      align-items: baseline;
-    }
-
-    .info-line span.label {
-      font-weight: 600;
-    }
-
-    /* Address 100% larger */
+    /* Address big text (100% larger ~ 2x) */
     #address {
-      font-size: 1.6rem;
+      font-size: 200%;
       font-weight: 600;
-      line-height: 1.2;
+      margin: 4px 0;
+      color: #ffeb3b;
     }
 
+    #status {
+      font-size: 0.9rem;
+      margin-top: 2px;
+      color: #ddd;
+    }
+
+    #game-info, #game-score {
+      font-size: 0.9rem;
+      margin-top: 2px;
+    }
+
+    /* Map area */
     #map {
-      flex: 1;
+      flex: 1 1 auto;
       width: 100%;
     }
 
-    @media (max-width: 768px) {
+    /* Floating controls over the map */
+    .floating-controls {
+      position: fixed;
+      bottom: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .floating-controls button {
+      padding: 8px 10px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      border: none;
+      background: #333;
+      color: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    }
+
+    .floating-controls button:hover {
+      background: #555;
+      cursor: pointer;
+    }
+
+    /* Info window content (black bubble) */
+    .info-window {
+      background: #000;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    /* Small screen tweaks */
+    @media (max-width: 600px) {
       .controls-row {
         flex-direction: column;
-        align-items: stretch;
+        align-items: flex-start;
       }
-
-      .btn {
-        width: 100%;
-        padding: 0.6rem 0.8rem;
-        font-size: 1rem;
+      #header {
+        padding: 6px 6px;
       }
-
-      select {
-        width: 100%;
+      .toggle-header-btn {
+        font-size: 0.95rem;
       }
     }
   </style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <div class="title-row">
-        <h1>Decatur Address Drill</h1>
-        <div class="game-summary">
-          <span id="game-info">Game: not running</span> •
-          <span id="game-score">Score: 0</span>
-        </div>
-      </div>
+  <!-- Header / Controls -->
+  <header id="header">
+    <button id="toggle-header" class="toggle-header-btn">
+      Hide Controls ▲
+    </button>
 
+    <div id="header-content">
       <div class="controls-row">
-        <button id="new-drill" class="btn secondary">
-          Single Drill
-        </button>
-
-        <button id="single-route-drill" class="btn secondary">
-          Single Route Drill
-        </button>
-
-        <button id="start-game" class="btn">
-          10-Address Game
-        </button>
-
-        <button id="start-route-game" class="btn">
-          10-Address Route Game
-        </button>
-
-        <button id="submit-route" class="btn secondary">
-          Submit Route
-        </button>
-
-        <button id="clear-route" class="btn secondary">
-          Clear Route
-        </button>
-
         <label>
           Station:
           <select id="station-select">
@@ -198,34 +172,73 @@
 
         <label>
           <input type="checkbox" id="toggle-zones" checked />
-          Show station zones
+          Show Zones
         </label>
 
         <label>
           <input type="checkbox" id="toggle-street-names" checked />
-          Show street names
+          Street Names
         </label>
       </div>
 
-      <div class="info-line">
-        <span class="label">Address:</span>
-        <span id="address">None</span>
-      </div>
-      <div class="info-line">
-        <span class="label">Status:</span>
-        <span id="status">Ready.</span>
-      </div>
-    </header>
+      <div id="address">(No address yet)</div>
+      <div id="status">Ready. Choose a mode below to start.</div>
+      <div id="game-info">Game: not running</div>
+      <div id="game-score">Score: 0</div>
+    </div>
+  </header>
 
-    <div id="map"></div>
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Floating buttons overlay -->
+  <div id="floating-controls" class="floating-controls">
+    <button id="new-drill">Single Drill</button>
+    <button id="start-game">10-Address Distance Game</button>
+    <button id="single-route-drill">Single Route Drill</button>
+    <button id="start-route-game">10-Address Route Game</button>
+    <button id="submit-route">Submit Route</button>
+    <button id="clear-route">Clear Route</button>
   </div>
 
+  <!-- Your GeoJSON / zones file: must define const RESPONSE_ZONES_GEOJSON = { ... } -->
+  <script src="zones.js"></script>
+
+  <!-- Main logic -->
   <script src="main.js"></script>
 
+  <!-- Google Maps API (with geometry + callback) -->
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry&callback=initMap"
     async
     defer
   ></script>
+
+  <!-- Optional: simple header collapse JS (can also be placed in main.js) -->
+  <script>
+    // Simple header collapse independent from main.js
+    document.addEventListener("DOMContentLoaded", () => {
+      const header = document.getElementById("header");
+      const toggleHeaderBtn = document.getElementById("toggle-header");
+
+      if (header && toggleHeaderBtn) {
+        toggleHeaderBtn.addEventListener("click", () => {
+          header.classList.toggle("collapsed");
+          if (header.classList.contains("collapsed")) {
+            toggleHeaderBtn.textContent = "Show Controls ▼";
+          } else {
+            toggleHeaderBtn.textContent = "Hide Controls ▲";
+          }
+
+          // After the animation, trigger a map resize if available
+          setTimeout(() => {
+            if (window.google && window.google.maps && window.map) {
+              google.maps.event.trigger(window.map, "resize");
+            }
+          }, 420);
+        });
+      }
+    });
+  </script>
 </body>
 </html>
