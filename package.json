@@ -1,0 +1,14 @@
+{
+  "name": "decatur-fire-map-trainer",
+  "version": "0.4.1",
+  "private": true,
+  "description": "Static Decatur Fire map, route, cross-street, and hundred-block training app.",
+  "scripts": {
+    "generate:hundred-blocks": "node scripts/analyze-hundred-block-bank.js --write",
+    "test": "node --test --test-isolation=none tests/*.test.js",
+    "check": "node --check main.js && node --check training-core.js && node --check hundred-block-data.js && node --check knowledge-data.js && node --test --test-isolation=none tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

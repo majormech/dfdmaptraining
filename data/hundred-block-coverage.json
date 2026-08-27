@@ -1,0 +1,3808 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-08-26",
+  "definition": "Every named Decatur street for which official centerline ranges prove two adjoining 100-blocks; contextual prompts preserve streets that shift or curve.",
+  "methodology": [
+    "Intersect the complete centerline layer with the official Decatur city limits.",
+    "Derive each endpoint block from all four address-range fields and the endpoint farthest from the Main Street baselines.",
+    "Require two adjacent carrier segments, a valid consecutive pair, and a named target street within 25 feet.",
+    "Assign the verified intersection to every matching official Still Alarm Territory.",
+    "Use location-qualified prompts when one street has more than one valid block pair."
+  ],
+  "sources": {
+    "roadCenterlines": "https://maps.decaturil.gov/arcgis/rest/services/Transportation/Street_Centerlines/FeatureServer/0",
+    "cityLimits": "https://maps.decaturil.gov/arcgis/rest/services/Public/city_limits/FeatureServer/0",
+    "stationTerritories": "https://maps.decaturil.gov/arcgis/rest/services/Fire/Still_Alarm_Territories/FeatureServer/0",
+    "numberingOrdinance": "https://decaturil.gov/DocumentCenter/View/118/Chapter-35---Numbering-Houses-PDF"
+  },
+  "sourceSnapshots": [
+    {
+      "file": "data/source/street-centerlines-0.geojson",
+      "featureCount": 2000,
+      "bytes": 1261332,
+      "sha256": "054b5cc9d596a715e894da4ebe9372cbb61771795673a10fc9aa0810c53253b2"
+    },
+    {
+      "file": "data/source/street-centerlines-2000.geojson",
+      "featureCount": 2000,
+      "bytes": 1242250,
+      "sha256": "bdb7556422437b2980e57f4955600fb2bdf3aa6976a130704ec6d9d55137141e"
+    },
+    {
+      "file": "data/source/street-centerlines-4000.geojson",
+      "featureCount": 2000,
+      "bytes": 1327914,
+      "sha256": "2f57141f142913037b130c924ffe3fd41d4795f5e3c1805bc68743876aacf0dc"
+    },
+    {
+      "file": "data/source/street-centerlines-6000.geojson",
+      "featureCount": 2000,
+      "bytes": 1235441,
+      "sha256": "f8ea1efe817a696b1ed647df0de03513e4b6a8b0e0e5ed090d84d8dde88ce054"
+    },
+    {
+      "file": "data/source/street-centerlines-8000.geojson",
+      "featureCount": 1545,
+      "bytes": 940309,
+      "sha256": "a358849815f397db8ebc1c66cc73cc8fef05994675ffad1a4e4addfa42ad6300"
+    },
+    {
+      "file": "data/source/decatur-city-limits.geojson",
+      "featureCount": 5,
+      "bytes": 224306,
+      "sha256": "294562198ee0fbeafa5e6c771ab8bbf9dc4dfa62adc80aaa1ebe7b3264e5d85a"
+    },
+    {
+      "file": "data/source/still-alarm-territories.geojson",
+      "featureCount": 7,
+      "bytes": 1170340,
+      "sha256": "d1d1f2e5db05e52f408bb274d2ae42439d4337a95e3337b2403e9101b6ff8086"
+    }
+  ],
+  "counts": {
+    "sourceSegments": 9545,
+    "cityIntersectingSegments": 5370,
+    "officialCityStreetNames": 1308,
+    "includedBoundaryStreetNames": 507,
+    "excludedStreetNames": 801,
+    "verifiedIntersectionPairs": 1682,
+    "streetBlockPairVariants": 575,
+    "questionRecords": 609,
+    "contextualQuestionRecords": 165,
+    "stationQuestionCounts": {
+      "1": 107,
+      "2": 101,
+      "3": 150,
+      "4": 75,
+      "5": 112,
+      "6": 104,
+      "7": 77
+    }
+  },
+  "rejectionCounts": {
+    "carrierDirection": 368,
+    "endpointToken": 2779,
+    "notCityStreet": 85,
+    "missingRange": 379,
+    "targetTooFar": 38,
+    "singleSegment": 1879,
+    "invalidPair": 664,
+    "axisConflict": 16,
+    "noStation": 0
+  },
+  "includedStreetNames": [
+    "3rd Dr",
+    "7th Dr",
+    "Baker Woods Ln",
+    "Bayview Dr",
+    "Benton Dr",
+    "Beth Blvd",
+    "Buckingham Dr",
+    "Burgener Dr",
+    "Burning Tree Dr",
+    "Calumet Rd",
+    "Camelot Cir",
+    "Canterbury Dr",
+    "Carl Ct",
+    "Carrie Ln",
+    "Carter Ave",
+    "Catherine St",
+    "Chat Dr",
+    "Circle Dr",
+    "Clearmont Ave",
+    "Clover Rd",
+    "Columbus Dr",
+    "Corman Ct",
+    "Country Manor Dr",
+    "Crestline Dr",
+    "Dana Dr",
+    "Dancey Ct",
+    "De Soto Ct",
+    "Doral Ct",
+    "Dove Dr",
+    "E Arlington Ave",
+    "E Ash Ave",
+    "E Barrington Ave",
+    "E Beacon Dr",
+    "E Bon Air Ct",
+    "E Brooks Dr",
+    "E Cantrell St",
+    "E Cardinal Dr",
+    "E Cedar St",
+    "E Center St",
+    "E Cerro Gordo St",
+    "E Cherry Dr",
+    "E Chestnut Ave",
+    "E Clay St",
+    "E Cleveland Ave",
+    "E Condit St",
+    "E Corman St",
+    "E Curtis Ave",
+    "E Decatur St",
+    "E Devonshire Rd",
+    "E Dickinson Ave",
+    "E Division St",
+    "E Du Frain Ave",
+    "E Eldorado St",
+    "E Elmhurst Ave",
+    "E Emerson Dr",
+    "E Faries Pkwy",
+    "E Finch Dr",
+    "E Fulton Ave",
+    "E Garfield Ave",
+    "E Geddes Ave",
+    "E Grand Ave",
+    "E Green St",
+    "E Harbour Ct",
+    "E Harrison Ave",
+    "E Hayden Dr",
+    "E Hays Ave",
+    "E Henderson Ave",
+    "E Hendrix St",
+    "E Hickory St",
+    "E Hinsdale Ave",
+    "E Hubbard Ave",
+    "E Huston Dr",
+    "E Ivy Ln",
+    "E Johns Ave",
+    "E Johnson Ave",
+    "E Kellar Ln",
+    "E Kenwood Ave",
+    "E Lawrence St",
+    "E Leafdale Ave",
+    "E Leafland Ave",
+    "E Lincoln Ave",
+    "E Locust St",
+    "E Logan St",
+    "E Macon St",
+    "E Main St",
+    "E Marietta St",
+    "E Marion St",
+    "E Maryland St",
+    "E Maynor St",
+    "E Maywood Ct",
+    "E Mcbride Ave",
+    "E Mckinley Ave",
+    "E Meadow Ln",
+    "E Melwood Ave",
+    "E Moore St",
+    "E Mound Rd",
+    "E Mueller Ave",
+    "E Nelson Park Rd",
+    "E North Fork Rd",
+    "E North Port Rd",
+    "E North St",
+    "E Oakwood Ave",
+    "E Olive St",
+    "E Orchard St",
+    "E Park Ln",
+    "E Parkway Dr",
+    "E Peoria Ave",
+    "E Pershing Rd",
+    "E Powers Blvd",
+    "E Prairie Ave",
+    "E Pythian Ave",
+    "E Riverside Ave",
+    "E Rogers Ave",
+    "E Sangamon St",
+    "E Sattley St",
+    "E Sedgwick St",
+    "E Sheridan St",
+    "E Shutter Dr",
+    "E Simpson Ave",
+    "E Snyder Dr",
+    "E Spruce St",
+    "E Stewart Dr",
+    "E Tait Ave",
+    "E Thrush Ave",
+    "E Timari Ct",
+    "E Turner Dr",
+    "E Underwood Ct",
+    "E US Route 36",
+    "E Van Buren Ave",
+    "E Vanderhoof St",
+    "E Wabash Ave",
+    "E Waggoner St",
+    "E Wallace Ave",
+    "E Walnut St",
+    "E Washington St",
+    "E White St",
+    "E Whitmer St",
+    "E Willard Ave",
+    "E William St",
+    "E William Street Rd",
+    "E Winnetka Ave",
+    "E Wood St",
+    "East Court Manor Pl",
+    "Fields Ct",
+    "Frank Dr",
+    "Frontier Rd",
+    "Gault St",
+    "Gayman Dr",
+    "Glenwood Ave",
+    "Grandview Dr",
+    "Granite Rd",
+    "Grant Ave",
+    "Greenhill Rd",
+    "Greenlake Dr",
+    "Greenridge Dr",
+    "Haynes Dr",
+    "Hidden Springs Rd",
+    "High Tide Dr",
+    "Hillcrest Dr",
+    "Holiday Dr",
+    "Home Park Ave",
+    "Hoyt Dr",
+    "Huff St",
+    "Hyman Dr",
+    "Il Route 105",
+    "Illini Dr",
+    "Indiana Ct",
+    "Irving Dr",
+    "Karen Ct",
+    "Kaydon Dr",
+    "Lakewood Ave",
+    "Las Vegas Dr",
+    "Longwood Dr",
+    "Mars Ct",
+    "Ment Dr",
+    "Mill St",
+    "Montgomery Pl",
+    "N 16th St",
+    "N 17th St",
+    "N 18th St",
+    "N 19th St",
+    "N 20th St",
+    "N 21st St",
+    "N 22nd St",
+    "N 23rd St",
+    "N 24th St",
+    "N 25th St",
+    "N 26th St",
+    "N 27th St",
+    "N 28th St",
+    "N 29th St",
+    "N 30th St",
+    "N 31st St",
+    "N 32nd St",
+    "N 33rd St",
+    "N 34th St",
+    "N 35th St",
+    "N 38th St",
+    "N 40th St",
+    "N Arthur Ct",
+    "N Ashley Ct",
+    "N Brett Ave",
+    "N Brush College Rd",
+    "N Burchard Dr",
+    "N Butler Dr",
+    "N Calhoun St",
+    "N Cambridge Dr",
+    "N Captain Ln",
+    "N Carolina Ave",
+    "N Central Dr",
+    "N Charles St",
+    "N Church St",
+    "N Clinton St",
+    "N College St",
+    "N Constant View Dr",
+    "N Cornell Dr",
+    "N Country Club Rd",
+    "N Cowgill Ave",
+    "N Dean Dr",
+    "N Dennis Ave",
+    "N Dogwood Ct",
+    "N Doneta Ave",
+    "N Dunham St",
+    "N East Ave",
+    "N East Court Dr",
+    "N Edward St",
+    "N Elizabeth St",
+    "N Excelsior St",
+    "N Fairlawn Ave",
+    "N Fairview Ave",
+    "N Fairway Ave",
+    "N Fite Dr",
+    "N Florian Ave",
+    "N Folk St",
+    "N Foster Ave",
+    "N Franklin St",
+    "N Glendale Ave",
+    "N Graceland Ave",
+    "N Gulick Ave",
+    "N Hill Ave",
+    "N Hillcrest Blvd",
+    "N Hilton St",
+    "N Houseland Ave",
+    "N Huron St",
+    "N Il Route 48",
+    "N Illinois St",
+    "N Jackson St",
+    "N James St",
+    "N Jasper St",
+    "N Jordan St",
+    "N Leonore Dr",
+    "N Lowber St",
+    "N Macarthur Rd",
+    "N Main St",
+    "N Maple Ave",
+    "N Martin Luther King Jr Dr",
+    "N Mcclain Dr",
+    "N Mcclellan Ave",
+    "N Meadowlark Dr",
+    "N Mercer St",
+    "N Moffet Ave",
+    "N Monroe St",
+    "N Morgan St",
+    "N Nickey Ave",
+    "N Nicklaus Ct",
+    "N Oak Crest Ave",
+    "N Oakdale Ave",
+    "N Oakland Ave",
+    "N Parkway Crossing Dr",
+    "N Pine St",
+    "N Poole St",
+    "N Prospect Ave",
+    "N Redbud Ct",
+    "N Rupp Pkwy",
+    "N Skippy Dr",
+    "N Spangler Dr",
+    "N Stone St",
+    "N Summit Ave",
+    "N Summit Ct",
+    "N Sunderland Dr",
+    "N Taylor Ave",
+    "N Union St",
+    "N University Ave",
+    "N Van Dyke St",
+    "N Victoria Ave",
+    "N Vine St",
+    "N Virginia Ave",
+    "N Walnut Grove Ave",
+    "N Warren St",
+    "N Water St",
+    "N Westlawn Ave",
+    "N Whitchel Ave",
+    "N Wilder Ave",
+    "N Wisteria Ct",
+    "N Witt St",
+    "N Woodford St",
+    "N Woodlawn Ave",
+    "N Woodridge Dr",
+    "Needle Rd",
+    "Nolen Dr",
+    "Northeast Carroll Dr",
+    "Nw Il Route 121",
+    "Oak Dr",
+    "Oak Ridge Dr",
+    "Olympic Ln",
+    "Phillips Dr",
+    "Plover Dr",
+    "Ramsey Dr",
+    "Redlich Ct",
+    "Richland Dr",
+    "Ridge Ave",
+    "S 16th St",
+    "S 17th St",
+    "S 18th St",
+    "S 19th St",
+    "S 20th St",
+    "S 21st St",
+    "S 22nd St",
+    "S 23rd St",
+    "S 25th St",
+    "S 26th St",
+    "S 31st St",
+    "S 32nd Pl",
+    "S 32nd St",
+    "S 33rd Pl",
+    "S 33rd St",
+    "S 34th Pl",
+    "S 34th St",
+    "S 35th St",
+    "S 36th St",
+    "S 37th St",
+    "S 44th St",
+    "S 45th St",
+    "S Acorn Dr",
+    "S Airlane Dr",
+    "S Austin Ave",
+    "S Baker Dr",
+    "S Baronette Ct",
+    "S Belmont Ave",
+    "S Boyd St",
+    "S Brownlow Ct",
+    "S Buckeye Ln",
+    "S Calhoun St",
+    "S Church St",
+    "S College St",
+    "S Commonwealth Ave",
+    "S Crea St",
+    "S Crestwood Dr",
+    "S Danny Dr",
+    "S Davis St",
+    "S Deerfield Ct",
+    "S Delmar Ave",
+    "S Dennis Ave",
+    "S Dipper Ln",
+    "S Edward St",
+    "S Elder Ln",
+    "S Ewing Ave",
+    "S Fairview Ave",
+    "S File Dr",
+    "S Forrest Ln",
+    "S Franklin St",
+    "S Franklin Street Rd",
+    "S Friel Ct",
+    "S Glencoe Ave",
+    "S Green Meadow Dr",
+    "S Haworth Ave",
+    "S Higdon Dr",
+    "S Hillcrest Blvd",
+    "S Hilton St",
+    "S Illinois St",
+    "S Jackson St",
+    "S Jasper St",
+    "S Jefferson Dr",
+    "S Lake Ridge Ave",
+    "S Laura St",
+    "S Linden Ave",
+    "S Maffit St",
+    "S Martin Luther King Jr Dr",
+    "S Mcclellan Ave",
+    "S Medinah Blvd",
+    "S Miller Ct",
+    "S Monroe St",
+    "S Montrose Ave",
+    "S Oak Crest Ave",
+    "S Oakland Ave",
+    "S Pine St",
+    "S Price St",
+    "S Rainwater Dr",
+    "S Saint Louis Bridge Rd",
+    "S Seigel St",
+    "S Sheridan Dr",
+    "S Sherwood Dr",
+    "S Sickles Dr",
+    "S Silas St",
+    "S Spring Ln",
+    "S Stone St",
+    "S Summit Ave",
+    "S Sycamore Ave",
+    "S Tanglewood Dr",
+    "S Taylor Ave",
+    "S Taylor Rd",
+    "S Taylorville Rd",
+    "S Twin Bridge Rd",
+    "S Union St",
+    "S Water St",
+    "S Wayside Pl",
+    "S Webster St",
+    "S Westdale Ave",
+    "S Westlawn Ave",
+    "S Willow St",
+    "S Windsor Rd",
+    "S Witt St",
+    "S Wooddale Ave",
+    "S Woodlawn Ave",
+    "Sands Dr",
+    "Shadow Dr",
+    "Sims Dr",
+    "Solar Ave",
+    "Spring Creek Rd",
+    "Spruce Hill Dr",
+    "Sugar Pine Ct",
+    "Timber View",
+    "Trevino Ln",
+    "Tropicana Rd",
+    "Tulane Dr",
+    "Twin Oaks Ct",
+    "Valley Dr",
+    "W Arbor Dr",
+    "W Ash Ave",
+    "W Barding Ave",
+    "W Berry Dr",
+    "W Center St",
+    "W Cerro Gordo St",
+    "W Chelsea Way",
+    "W Cooper Dr",
+    "W Corson Ave",
+    "W Cushing St",
+    "W Damon Ave",
+    "W Decatur St",
+    "W Diane Rd",
+    "W Division St",
+    "W Eldorado St",
+    "W Fairview Pl",
+    "W Forest Ave",
+    "W Garfield Ave",
+    "W Glenn Dr",
+    "W Grand Ave",
+    "W Green St",
+    "W Greendell Dr",
+    "W Harrison Ave",
+    "W Hay St",
+    "W Hazel Ave",
+    "W Hickory Point Rd",
+    "W Highland Ct",
+    "W Howard St",
+    "W Hoyt Ct",
+    "W Hunt St",
+    "W Imboden Dr",
+    "W Johnson Ave",
+    "W Josephine Dr",
+    "W Karen Dr",
+    "W Kellar Ln",
+    "W Kenwood Ct",
+    "W King St",
+    "W Lafayette Ave",
+    "W Leafland Ave",
+    "W Legion Dr",
+    "W Macon St",
+    "W Main St",
+    "W Marietta St",
+    "W Marshall Ave",
+    "W Masters Ln",
+    "W Mckinley Ave",
+    "W Melrose Ct",
+    "W Montgomery Ln",
+    "W Mound Rd",
+    "W North St",
+    "W Oak Park Dr",
+    "W Olive St",
+    "W Packard St",
+    "W Pershing Rd",
+    "W Prairie Ave",
+    "W Pythian Ave",
+    "W Ratchford Ln",
+    "W Rattan Ave",
+    "W Riedel Ave",
+    "W Riverview Ave",
+    "W Sawyer St",
+    "W Semor Dr",
+    "W Sesom Dr",
+    "W Shadow Ln",
+    "W Sunset Ave",
+    "W Taft St",
+    "W Tuttle St",
+    "W US Route 36",
+    "W Waggoner St",
+    "W Washington St",
+    "W Wayside Ave",
+    "W Westminster Ave",
+    "W William St",
+    "W Wood St",
+    "Warwick Dr",
+    "Wedgewood Ct",
+    "Westlake Ave",
+    "Wilcox Ln",
+    "Wisconsin Dr",
+    "Woodbine Dr"
+  ],
+  "excludedStreetNames": [
+    {
+      "street": "1st Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "1st South Shores Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "2nd South Shores Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "35th Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "4th Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "5th Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "6th Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "8th Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Airpark Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Airport Plaza Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Allen Bend Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Allen Bend Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Allen Bend Pt",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Allison Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Andrea Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Andrews St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Arbor Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Arizona Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Baker Woods Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Baker Woods Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Barclay Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bay Shore Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bay Shore Heights Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Baywood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Belaire Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bentley Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bentonville Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bering St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bluebird Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bob-o-link Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Boiling Springs Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bonhomme Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Brennaman Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bretton Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bristol Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Broadmoor Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Brookfield Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Brookville Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Brown Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Buccaneer Pt",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Bunker Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Burt Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cambridge Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Camelot Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Candlewood Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cantrell Heights St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Carolyn Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Carousel Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Carriage Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cassell Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Chris Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Churchill Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Circle Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cleta St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cloyds Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Club View Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "College Square",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Colorado Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Condor Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Connie Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cottage Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Country Fair Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Country Manor Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Country Manor Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Country Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Crescent Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cresthaven Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Cundiff Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Daisy Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Dakota Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Danceland Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "De Loach Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Dell Oak Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Dellwood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Dellwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Delray Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Delta Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Delta Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Desert Inn Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Dickinson Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Dolphin Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Drexel Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Du Claire Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Dunes Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Albert St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Aldi Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Beacon Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Birch St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Boyd Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Bradford Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Buck Hollow Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Buena Vista St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Carroll Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Central Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Christine Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E College Park",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Comet Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Damon Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Deer Run Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Delta Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Dividend Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Duchess Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Eighth Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Eleventh Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Elm Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Eugene Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Fifth Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E First Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Fitzgerald Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Fitzgerald Rd (eb)",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Fitzgerald Rd (wb)",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Flamingo Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Florida Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Flower Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Fourth Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Garver Church Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Gate Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Glider Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Greenlake Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Grove Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Gunnar Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Hardy St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Hickory Point Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Hillshire Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Hospitality Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E I 72",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E I 72 Ramp",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Imboden Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Kile St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E King St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E L & A Industrial Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E La Salle Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Lake Crest Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Lake Shore Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Larry Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Lauren Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Liberty Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Lori Lyn Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Lost Bridge Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Maplewood Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Marcella Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Marlett Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Maryland Heights Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Maynard St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Meadows Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Melody Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Melrose Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Michigan Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Millstone Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Minnie St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Mueller Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E New Moon Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Ninth Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E North Court Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Ocean Trail Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Orchard Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Packard St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Pavilion Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Pearl St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Pepperidge Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Pierson Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Prosperity Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Reas Bridge Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Redlich Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Regal Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Reserve Way",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Robin Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Ronald Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Roosevelt Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Rose St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Rosewood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Runnin Reds Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E S Main St To E Lake Shore Dr Ramp",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Sarver Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Scovill Zoo Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Second Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Seventh Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Shady Crest St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Sheridan Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Sixth Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E South Court Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Stella Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Stephanie Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Stuart Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Sunrise Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Sydney Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Tenth Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Terrace Drive",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Third Progress St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Thumper Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Timberlake Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Veronica Vista St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Washburn St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Wellington Way",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Willow Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "E Woodford Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "East Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Eastmoreland Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Eastmoreland Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Eastmoreland Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Eastmoreland Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Edgecomb Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Edgewood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Emerson Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Enlow Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Essex Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Euel St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Evandale Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Evergreen Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Executive Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fair Oaks Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fair St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fairhaven Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fairway Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Faries Park",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Federal Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fenton Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fenway Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ferris Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fitzgerald Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Florida Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fontenac Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Fontenac Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ford Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Forest Knolls Est",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Forrest Green Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Forrest Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Franzy Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Frenchs Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Galloway Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Gary Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Gibson St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Glen Briar Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Glenview Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Glenview Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Grays Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Green Oak Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Greenswitch Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Greenway Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Greenwood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Gregory Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Gun Club Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hackberry Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hackberry Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Harold Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Harvard Square",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Havenwood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Havenwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hawthorne Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hayden Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Heather Hills Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hedrick Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Heritage Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hickory Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hickory Point Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hickory Point Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hickorywood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Highland Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hill Park Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hill Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hillcrest Way",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Holiday Inn Blvd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Holly Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Holly Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Homewood Fishing Club",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Honeytree Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hoyt Knoll",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hulett Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hummingbird Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hunt Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Huston Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Huston Hills Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Hyde Park Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Il Route 121",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Illinois Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Incubator Asphalt Cap",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Isabella Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ivywood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Jamar Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Jamestown Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kathy Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kay Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kelly Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kent Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kent Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kent Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kenwood Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "King Arthur Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Kirby Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Knollwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Koester Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lake Bluff Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lake Crest Pt",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lake Grove Club",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lake Pointe",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lakeland Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lakeview Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lakewood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lantern Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Larkdale Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Las Olas Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Leslie Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lido Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lilac Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lincoln Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Linden Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Lombardy Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Longwood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Longwood Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Louise Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Madison Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Manchester Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Manor Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Maple Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Marlin Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Marlin Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Martingale Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Mary Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Maurine Manor",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Maze Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Mcdonald Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Meadow Terrace Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Meadow Terrace Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Meadowview Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Meadowview Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Medial Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Medial Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Medial Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Melwood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Memorial Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Mesa Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Midiron Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Midland Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Mill River Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Millikin Pkwy",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Millstream Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Millstream Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Mission Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Mitchel Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Monarch Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Montez Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Montgomery Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Moundford Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Moundview Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Moundview Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Mount Vernon Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N 23rd Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Adams Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Agricultural Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Arrival Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Bachrach Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Baker Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Barberry Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Barnes Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Beechwood Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Betzer Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Brant Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Brettwood Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Bright St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Carlson Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Carol Manor",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Carsons Trce",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Central Progress Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Christine Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Christmas Tree Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Cobb Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Colin Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Columbia Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Commercial Crossing",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Community Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Country Club Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Country Club Meadows Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Cove Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Davis Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Delta Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Dinneen St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Dunn Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Dwight Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N East Progress Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Easy St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Edgewater Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Educational Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Ellen Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Elm Park Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Faries Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Forrest Green Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Front St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Gebhart Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Grand Prix Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Green Oak Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Green Tree Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Greenswitch Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Gregory Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Hale Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Harness Racing Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Haworth Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Hickory Point Frontage Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Home Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Il Route 121",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Kandy Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Kyle Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Lake Shore Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Lawson Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Leader Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Linden Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Lisa Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Livestock Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Lourdes Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Lynette Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Lynette Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Mahnke Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Martin Luther King Jr Dr Frontage",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Mcdonald Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Megan Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Merchant St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Moffet Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Moundford Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Neeley Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Newcastle Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Norwood Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Oakcrest Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Oakcrest Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Oakdale Blvd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Park Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Park St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Parkway Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Parry Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Pine Tree Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Pipit Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Pleasant View Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Portage Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N President Howard Brown Blvd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Railroad Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Ravina Park",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Ridge Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Robinson Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Rosedale Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Samuels St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Sangamon Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Scenic Blvd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Scovill Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Short St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Southern Hills Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Stanley Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N State St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Stevens Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Sundown Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Sunnyside Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Sunup Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Sweetwater Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Tanglewood Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Timberlake Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Twickingham Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N US Route 51",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Vicki Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N West Progress Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Westdale Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Willow Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Wilson Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Wingate Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Woodford Frontage Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "N Wyckles Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Nevada Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "North Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Northbrook Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Northbrook Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Northern Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Northhaven Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Northland Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Norwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Nottingham Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Oak Ridge Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Oaklawn Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Oakmont Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ohio Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Olympic Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Oriole Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Orlean Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Oxford Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Palmer Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Park Lane Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Park Lane Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Parkgate Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Peggy Ann Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Pennsylvania Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Pershing Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Peyton Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Plainview St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Point Bluff Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Post Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Powers Lane Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Prestwick Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Primrose Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Primrose Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Queen Mary Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ravina Park Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Reas Bridge Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Redstart Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Reeder Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Regal Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Regal Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Regina Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Richmond Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ridge Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ridge Lane Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ridgecrest Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ridgedale Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Ridgeway Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Riedel Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Road Four",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Road One",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Road Three",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Road Two",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Rob Roy Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Rock Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Roderick Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Rolling Creek Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Rr Row",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Runway Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Rustic View",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S 22nd Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S 23rd Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S 24th St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S 27th St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S 29th St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Airport Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Albany Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Albany Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Albany St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Amelia Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Angle Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Augusta Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Baltimore Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Blaine Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Brierwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Brookline Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Burgener Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Busn US Route 51",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Cantrell Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Cedar Hill Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Conard Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Country Club Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Cragston Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Crestview Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Dagmar Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Danceland Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Deerpath Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Dorenda St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S E Lake Shore Dr To S Franklin St Ramp",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S East Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Elwin Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Ewing Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Fontaine Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Forest Crest Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Forest Crest Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Forrest Green Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Franklin St To E Lake Shore Dr Ramp",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Franklin Street Frontage Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Glenn Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Glenwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Greenview Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Greenwood Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Grove Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Haines Hill Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Hancock Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Hawthorne Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Hilltop Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Hogan Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Hyde Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Imboden Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Imboden Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Industry Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Jennell Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Kater Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Kathy Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Kingsley Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lake Front Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lake Shore Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lansdowne Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lewallen Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lincoln Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lost Bridge Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lynnwood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Lynnwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Main St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Marquette Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Mount Zion Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Mueller Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Nantucket Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Nelson Blvd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Olympia Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Park St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Parkwood Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Pheasant Run",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Pine Hill Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Pine Meadow Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Pinehurst Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Powers Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Quail Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Rachels Way",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Redwood Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Richmond Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Sadowski Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Sandhill Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Sandy Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Southwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S State St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Stevens Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Sundale Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Sunnyside Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Turner Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Veech Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Virginia Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Wakefield Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Wheatland Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Will Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Windsor Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Wise St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "S Wyckles Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sadowski Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Saint Andrews Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "San Marcus Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sandcreek Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sandcreek Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sandcreek Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sandcreek Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Scott Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sheffield Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sheffield Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sheila Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Shore Oak Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Shoreline Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Shoreline Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Shorewood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Silver Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sims Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sir Lancelot Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sir Richard Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "South Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "South Gate Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "South Shores Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "South Side Country Club",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Southampton Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Southern Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Southland Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Southland Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Spitler Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Star Route Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Steele Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Straza Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Surrey Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Susan Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Swashbuckler Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sycamore Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Sylvan Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "South Water Plant",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Tall Oaks Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Tanager Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Tate Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Tempe Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Temple Hills Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Tennison Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Thunderbird Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Tiffany Terrace",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Timber Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Timber Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Timber Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Tohill Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Town And Country Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Troy Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Turpin Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "US Route 51 Access",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Valley View Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Valley View Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Venus Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Vicki Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Victoria Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Vining Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Virginia Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W 1st Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Alice Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Alpine Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Appletree Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Arbor Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Arcadia Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Ashwood Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Aspen Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Avalon Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Bay Hill Blvd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Benson Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Boiling Springs Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Bowshier Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Bradley Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Brownlow Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Burtschi Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W California Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Carnival Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Cottage Hill Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Crystal Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Dallas Beyer Blvd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Devonshire Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Devore Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Dover Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Downing St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Dreamland Lake Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Dunwood Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Elm St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Evans Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Fairmont Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Fairview Park",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Fairview Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Fielding Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Florence",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Florian Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Fountain Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Gary Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Gate Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Glen Oaks Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Graceland Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Granada Hills Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Grove Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Harper Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Heather Hills Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Highland Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Hillshire Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W I 72",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W I 72 Ramp",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Kenwood Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Kirkland Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Lincoln Park Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Manchester Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Mark Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Marlene Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Melrose Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Michael Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Millikin Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Monument Hill Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Moorwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Mount Gilead Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Nordic Hills Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Northfield Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Oak Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Oakland Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Oakland Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Oxford Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Parsons Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Pebble Beach Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Peoria Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Pineview Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Provost Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Race Track Rdg",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Ravina Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Ravina Park Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Ridge Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Ridgeview Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Rock Springs Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Rotary Way",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Saint Louis Bridge Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Sarah Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Scotch Pine Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W South Side Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W South Side Frontage Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Spring St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Sullivan Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Sumac Trce",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Sun Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Sun-n-fun Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Taft Ave",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W View St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Watson Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Wiley Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "W Wolf Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Wasson Way",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Water St Frontage Road",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Waterford Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Waterford Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Webster Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Welles St",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "West Court Manor Pl",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "West Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Western Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Westland Rd",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Whippoorwill Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "White Oak Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "White Pines Cir",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Wildwood Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Wildwood Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Williamsburg Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Willowbrook Ln",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Woodhill Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Woodhill Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Woodridge Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Woodside Trail",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Wren Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Wyoming Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Yorkshire Dr",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    },
+    {
+      "street": "Yorktown Ct",
+      "reason": "No verified pair of adjacent 100-block ranges at a named intersection"
+    }
+  ]
+}

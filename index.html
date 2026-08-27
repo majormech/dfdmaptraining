@@ -2,169 +2,74 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#111a22" />
+  <meta name="google-maps-map-id" content="DEMO_MAP_ID" />
+  <meta name="google-maps-hidden-labels-map-id" content="" />
+  <meta
+    name="description"
+    content="Interactive Decatur Fire station, address, and route training."
+  />
+  <meta property="og:title" content="Decatur Fire Map Trainer" />
+  <meta
+    property="og:description"
+    content="Station and route training for Decatur Fire personnel."
+  />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Decatur Fire Map Trainer" />
+  <meta
+    name="twitter:description"
+    content="Station and route training for Decatur Fire personnel."
+  />
+  <meta name="twitter:image" content="og.png" />
   <title>Decatur Fire Map Trainer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #111;
-      color: #f5f5f5;
-    }
-
-    body {
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Header / control panel */
-    #header {
-      background: #222;
-      color: white;
-      padding: 8px 10px;
-      border-bottom: 2px solid #333;
-    }
-
-    .toggle-header-btn {
-      width: 100%;
-      padding: 8px 10px;
-      background: #444;
-      color: white;
-      font-size: 1rem;
-      border: none;
-      border-radius: 6px;
-      margin-bottom: 6px;
-    }
-
-    #header-content {
-      overflow: hidden;
-      transition: max-height 0.4s ease, opacity 0.3s ease;
-      max-height: 600px;
-      opacity: 1;
-    }
-
-    #header.collapsed #header-content {
-      max-height: 0;
-      opacity: 0;
-      pointer-events: none;
-      margin-top: 0;
-    }
-
-    .controls-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .controls-row label {
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    select, button, input[type="checkbox"] {
-      font-size: 0.9rem;
-    }
-
-    /* Address big text (100% larger ~ 2x) */
-    #address {
-      font-size: 200%;
-      font-weight: 600;
-      margin: 4px 0;
-      color: #ffeb3b;
-    }
-
-    #status {
-      font-size: 0.9rem;
-      margin-top: 2px;
-      color: #ddd;
-    }
-
-    #game-info, #game-score {
-      font-size: 0.9rem;
-      margin-top: 2px;
-    }
-
-    /* Map area */
-    #map {
-      flex: 1 1 auto;
-      width: 100%;
-    }
-
-    /* Floating controls over the map */
-    .floating-controls {
-      position: fixed;
-      bottom: 12px;
-      right: 12px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .floating-controls button {
-      padding: 8px 10px;
-      font-size: 0.9rem;
-      border-radius: 6px;
-      border: none;
-      background: #333;
-      color: #fff;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-    }
-
-    .floating-controls button:hover {
-      background: #555;
-      cursor: pointer;
-    }
-
-    /* Hide floating controls when header is collapsed */
-    #header.collapsed ~ #floating-controls {
-      display: none;
-    }
-
-    /* Info window content (black bubble) */
-    .info-window {
-      background: #000;
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-
-    /* Small screen tweaks */
-    @media (max-width: 600px) {
-      .controls-row {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      #header {
-        padding: 6px 6px;
-      }
-      .toggle-header-btn {
-        font-size: 0.95rem;
-      }
-    }
-  </style>
+  <link rel="icon" type="image/png" href="og.png" />
+  <link rel="stylesheet" href="styles.css?v=0.4.1" />
 </head>
 <body>
-  <!-- Header / Controls -->
-  <header id="header">
-    <button id="toggle-header" class="toggle-header-btn">
-      Hide Controls ▲
-    </button>
+  <a class="skip-link" href="#map">Skip to training map</a>
 
-    <div id="header-content">
-      <div class="controls-row">
-        <label>
-          Station:
-          <select id="station-select">
-            <option value="any">Any Station</option>
+  <header id="header" class="app-header">
+    <div class="brand-bar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">DFD</div>
+        <div>
+          <p class="eyebrow">Training console</p>
+          <h1>Decatur Fire Map Trainer</h1>
+        </div>
+      </div>
+
+      <div
+        id="map-status"
+        class="map-status"
+        data-state="loading"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="map-status-text">Loading map</span>
+      </div>
+
+      <button
+        id="toggle-header"
+        class="icon-button"
+        type="button"
+        aria-controls="header-content"
+        aria-expanded="true"
+      >
+        <span aria-hidden="true">⌃</span>
+        <span class="toggle-label">Hide panel</span>
+      </button>
+    </div>
+
+    <div id="header-content" class="header-content">
+      <section class="setup-panel" aria-label="Map setup">
+        <label class="field" for="station-select">
+          <span>Response area</span>
+          <select id="station-select" disabled>
+            <option value="any">Any station</option>
             <option value="1">Station 1</option>
             <option value="2">Station 2</option>
             <option value="3">Station 3</option>
@@ -175,75 +80,225 @@
           </select>
         </label>
 
-        <label>
-          <input type="checkbox" id="toggle-zones" checked />
-          Show Zones
+        <label class="switch-control">
+          <input type="checkbox" id="toggle-zones" checked disabled />
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>Response zones</span>
         </label>
 
-        <label>
-          <input type="checkbox" id="toggle-street-names" checked />
-          Street Names
+        <label class="switch-control">
+          <input type="checkbox" id="toggle-map-labels" disabled />
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>Hide map labels</span>
         </label>
-      </div>
 
-      <div id="address">(No address yet)</div>
-      <div id="status">Ready. Choose a mode below to start.</div>
-      <div id="game-info">Game: not running</div>
-      <div id="game-score">Score: 0</div>
+      </section>
+
+      <section
+        id="call-panel"
+        class="call-panel"
+        aria-labelledby="address"
+        aria-busy="true"
+      >
+        <div class="call-heading">
+          <div>
+            <span id="mode-label" class="mode-badge">Stand by</span>
+            <span id="game-info" class="round-label">Map initialization</span>
+          </div>
+          <div class="score-card" aria-label="Current penalty score">
+            <span>Penalty</span>
+            <strong id="game-score">—</strong>
+            <small>Lower is better</small>
+          </div>
+        </div>
+
+        <h2 id="address">Preparing training map…</h2>
+        <p id="status" class="call-status" role="status" aria-live="polite">
+          Loading Google Maps, station locations, and response zones.
+        </p>
+
+        <form
+          id="text-answer-form"
+          class="text-answer-panel"
+          aria-labelledby="address"
+          aria-describedby="status answer-help answer-feedback"
+          hidden
+          novalidate
+        >
+          <fieldset>
+            <legend id="answer-legend">Enter both answers</legend>
+            <div class="answer-fields">
+              <label class="answer-field" for="answer-one">
+                <span id="answer-one-label">Answer 1</span>
+                <input
+                  id="answer-one"
+                  name="answerOne"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="words"
+                  spellcheck="false"
+                  enterkeyhint="next"
+                  required
+                />
+              </label>
+              <label class="answer-field" for="answer-two">
+                <span id="answer-two-label">Answer 2</span>
+                <input
+                  id="answer-two"
+                  name="answerTwo"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="words"
+                  spellcheck="false"
+                  enterkeyhint="done"
+                  required
+                />
+              </label>
+              <button
+                id="submit-text-answer"
+                class="utility-button submit answer-submit"
+                type="submit"
+              >
+                Check answer
+              </button>
+            </div>
+          </fieldset>
+          <p id="answer-help" class="answer-help">
+            Enter both answers. Order does not matter.
+          </p>
+          <p
+            id="answer-feedback"
+            class="answer-feedback"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            hidden
+          ></p>
+        </form>
+      </section>
     </div>
   </header>
 
-  <!-- Map -->
-  <div id="map"></div>
+  <main class="map-shell">
+    <div
+      id="map"
+      role="region"
+      aria-label="Interactive Decatur training map"
+      aria-describedby="map-help"
+      tabindex="0"
+    ></div>
 
-  <!-- Floating buttons overlay -->
-  <div id="floating-controls" class="floating-controls">
-    <button id="new-drill">Single Drill</button>
-    <button id="start-game">10-Address Distance Game</button>
-    <button id="single-route-drill">Single Route Drill</button>
-    <button id="start-route-game">10-Address Route Game</button>
-    <button id="submit-route">Submit Route</button>
-    <button id="clear-route">Clear Route</button>
-  </div>
+    <p id="map-help" class="visually-hidden">
+      Pan the focused map with the keyboard, then press Enter or Space to choose
+      the point under the center crosshair.
+    </p>
+    <div id="map-crosshair" class="map-crosshair" aria-hidden="true">
+      <span></span>
+    </div>
 
-  <!-- Your GeoJSON / zones file: must define const RESPONSE_ZONES_GEOJSON = { ... } -->
-  <script src="zones.js"></script>
+    <aside id="step-card" class="step-card" aria-live="polite">
+      <span class="step-kicker">Next step</span>
+      <strong id="step-title">Choose a mode</strong>
+      <span id="step-detail">Select a drill from the tray below.</span>
+    </aside>
 
-  <!-- Main logic -->
-  <script src="main.js"></script>
+    <aside id="route-legend" class="route-legend" aria-label="Route colors" hidden>
+      <span><i class="route-swatch user-route" aria-hidden="true"></i>Your route</span>
+      <span id="accepted-route-legend" hidden>
+        <i class="route-swatch accepted-route" aria-hidden="true"></i>Closest accepted route
+      </span>
+    </aside>
+  </main>
 
-  <!-- Google Maps API (with geometry + callback) -->
+  <nav id="training-controls" class="control-dock" aria-label="Training modes">
+    <div class="mode-actions">
+      <button id="new-drill" class="action-button primary" type="button" disabled>
+        <span class="action-number" aria-hidden="true">01</span>
+        <span>Single location</span>
+      </button>
+      <button id="start-game" class="action-button" type="button" disabled>
+        <span class="action-number" aria-hidden="true">10</span>
+        <span>Location game</span>
+      </button>
+      <button id="single-route-drill" class="action-button" type="button" disabled>
+        <span class="action-number" aria-hidden="true">01</span>
+        <span>Single route</span>
+      </button>
+      <button id="start-route-game" class="action-button" type="button" disabled>
+        <span class="action-number" aria-hidden="true">10</span>
+        <span>Route game</span>
+      </button>
+      <button id="start-cross-street-game" class="action-button" type="button" disabled>
+        <span class="action-number" aria-hidden="true">10</span>
+        <span>Cross streets</span>
+      </button>
+      <button id="start-hundred-block-game" class="action-button" type="button" disabled>
+        <span class="action-number" aria-hidden="true">10</span>
+        <span>100-block lines</span>
+      </button>
+    </div>
+
+    <div id="route-actions" class="route-actions" aria-label="Route controls" hidden>
+      <button id="move-route-guess" class="utility-button" type="button" disabled>
+        Move address
+      </button>
+      <button id="undo-route" class="utility-button" type="button" disabled>
+        Undo point
+      </button>
+      <button id="clear-route" class="utility-button" type="button" disabled>
+        Clear route
+      </button>
+      <button id="submit-route" class="utility-button submit" type="button" disabled>
+        Submit route
+      </button>
+    </div>
+  </nav>
+
+  <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-title">
+    <div class="result-header">
+      <div>
+        <p class="eyebrow">Training complete</p>
+        <h2 id="result-title">Session results</h2>
+      </div>
+      <button id="close-results" class="dialog-close" type="button" aria-label="Close results">
+        ×
+      </button>
+    </div>
+    <p id="result-summary" class="result-summary"></p>
+    <div class="result-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Round</th>
+            <th scope="col">Prompt</th>
+            <th scope="col">Result</th>
+            <th scope="col">Penalty</th>
+          </tr>
+        </thead>
+        <tbody id="result-rows"></tbody>
+      </table>
+    </div>
+    <form method="dialog" class="dialog-actions">
+      <button class="action-button primary" value="close">Return to map</button>
+    </form>
+  </dialog>
+
+  <noscript>
+    <div class="fatal-banner">
+      JavaScript is required to run the Decatur Fire Map Trainer.
+    </div>
+  </noscript>
+
+  <script src="zones.js?v=0.4.1"></script>
+  <script src="hundred-block-data.js?v=0.4.1"></script>
+  <script src="knowledge-data.js?v=0.4.1"></script>
+  <script src="training-core.js?v=0.4.1"></script>
+  <script src="main.js?v=0.4.1"></script>
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&libraries=geometry&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&v=weekly&libraries=geometry,geocoding,marker,routes&loading=async&callback=initMap"
     async
     defer
+    onerror="window.handleMapsLoadError && window.handleMapsLoadError()"
   ></script>
-
-  <!-- Header collapse JS -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const header = document.getElementById("header");
-      const toggleHeaderBtn = document.getElementById("toggle-header");
-
-      if (header && toggleHeaderBtn) {
-        toggleHeaderBtn.addEventListener("click", () => {
-          header.classList.toggle("collapsed");
-          if (header.classList.contains("collapsed")) {
-            toggleHeaderBtn.textContent = "Show Controls ▼";
-          } else {
-            toggleHeaderBtn.textContent = "Hide Controls ▲";
-          }
-
-          // Trigger map resize if global map is exposed
-          setTimeout(() => {
-            if (window.google && window.google.maps && window.map) {
-              google.maps.event.trigger(window.map, "resize");
-            }
-          }, 420);
-        });
-      }
-    });
-  </script>
 </body>
 </html>
-
