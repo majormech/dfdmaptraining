@@ -1,23 +1,33 @@
 "use strict";
 
 (function (root, factory) {
+  const crossStreetData =
+    typeof module === "object" && module.exports
+      ? require("./cross-street-data.js")
+      : root && root.DFDCrossStreetData;
   const hundredBlockData =
     typeof module === "object" && module.exports
       ? require("./hundred-block-data.js")
       : root && root.DFDHundredBlockData;
-  const data = factory(hundredBlockData);
+  const data = factory(crossStreetData, hundredBlockData);
   if (typeof module === "object" && module.exports) {
     module.exports = data;
   }
   if (root) {
     root.DFDKnowledgeData = data;
   }
-})(typeof window !== "undefined" ? window : null, function (HundredBlockData) {
+})(typeof window !== "undefined" ? window : null, function (
+  CrossStreetData,
+  HundredBlockData
+) {
+  if (!CrossStreetData || !Array.isArray(CrossStreetData.questions)) {
+    throw new Error("The generated cross-street question bank is unavailable.");
+  }
   if (!HundredBlockData || !Array.isArray(HundredBlockData.questions)) {
     throw new Error("The generated 100-block question bank is unavailable.");
   }
 
-  const VERIFIED_ON = "2026-08-26";
+  const VERIFIED_ON = "2026-08-27";
   const ACTIVE_ADDRESS_URL =
     "https://maps.decaturil.gov/arcgis/rest/services/Public/addresses/FeatureServer/0";
   const ROAD_CENTERLINE_URL =
@@ -70,28 +80,48 @@
     ];
   }
 
-  function crossStreetQuestion(
-    id,
-    prompt,
-    coordinates,
-    stationIds,
-    firstAnswer,
-    secondAnswer
-  ) {
+  function crossStreetQuestion(question) {
+    if (typeof question === "string") {
+      const prompt = arguments[1];
+      const coordinates = arguments[2];
+      const stationIds = arguments[3];
+      return Object.freeze({
+        id: question,
+        prompt,
+        stationIds: Object.freeze(stationIds.slice()),
+        coordinates: Object.freeze({
+          lat: coordinates[0],
+          lng: coordinates[1],
+        }),
+        answers: Object.freeze([arguments[4], arguments[5]]),
+        sourceUrls: Object.freeze([ACTIVE_ADDRESS_URL, ROAD_CENTERLINE_URL]),
+        verifiedOn: "2026-08-26",
+      });
+    }
     return Object.freeze({
-      id,
-      prompt,
-      stationIds: Object.freeze(stationIds.slice()),
+      id: question.id,
+      prompt: question.prompt,
+      streetName: question.streetName,
+      stationIds: Object.freeze(question.stationIds.slice()),
       coordinates: Object.freeze({
-        lat: coordinates[0],
-        lng: coordinates[1],
+        lat: question.coordinates.lat,
+        lng: question.coordinates.lng,
       }),
-      answers: Object.freeze([firstAnswer, secondAnswer]),
+      answers: Object.freeze(
+        question.answers.map(function (answer) {
+          return streetAnswer(answer.display, answer.aliases);
+        })
+      ),
+      verifiedUsing: Object.freeze(question.verifiedUsing.slice()),
+      sourceAddressObjectId: question.sourceAddressObjectId,
+      sourceCenterlineObjectId: question.sourceCenterlineObjectId,
+      matchDistanceFeet: question.matchDistanceFeet,
       sourceUrls: Object.freeze([
         ACTIVE_ADDRESS_URL,
         ROAD_CENTERLINE_URL,
+        STATION_TERRITORIES_URL,
       ]),
-      verifiedOn: VERIFIED_ON,
+      verifiedOn: CrossStreetData.generatedOn,
     });
   }
 
@@ -137,11 +167,11 @@
         STATION_TERRITORIES_URL,
         NUMBERING_ORDINANCE_URL,
       ]),
-      verifiedOn: VERIFIED_ON,
+      verifiedOn: HundredBlockData.generatedOn,
     });
   }
 
-  const crossStreetQuestions = Object.freeze([
+  const crossStreetFixtures = Object.freeze([
     crossStreetQuestion(
       "cross-232-w-packard",
       "232 W Packard St",
@@ -284,16 +314,42 @@
     ),
   ]);
 
+  const crossStreetQuestions = Object.freeze(
+    CrossStreetData.questions.map(crossStreetQuestion)
+  );
+  crossStreetFixtures.forEach(function (fixture) {
+    const generated = crossStreetQuestions.find(function (question) {
+      return question.id === fixture.id;
+    });
+    const generatedAnswers = generated
+      ? generated.answers.map(function (answer) {
+          return answer.display;
+        })
+      : [];
+    const fixtureAnswers = fixture.answers.map(function (answer) {
+      return answer.display;
+    });
+    if (
+      !generated ||
+      generated.prompt !== fixture.prompt ||
+      generatedAnswers.join("|") !== fixtureAnswers.join("|")
+    ) {
+      throw new Error("Generated cross-street fixture mismatch: " + fixture.id);
+    }
+  });
+
   const hundredBlockQuestions = Object.freeze(
     HundredBlockData.questions.map(hundredBlockQuestion)
   );
 
   return Object.freeze({
-    schemaVersion: 2,
+    schemaVersion: 3,
     verifiedOn: VERIFIED_ON,
     sources,
     crossStreetQuestions,
     hundredBlockQuestions,
+    crossStreetGeneratedOn: CrossStreetData.generatedOn,
+    crossStreetSourceVersion: CrossStreetData.schemaVersion,
     hundredBlockGeneratedOn: HundredBlockData.generatedOn,
     hundredBlockSourceVersion: HundredBlockData.schemaVersion,
   });

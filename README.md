@@ -11,7 +11,7 @@ choosing a hosting or backend platform.
 - 10-address location game
 - Single route drill
 - 10-address route game
-- 10-address cross-street game with two order-independent answers
+- 10-address cross-street game with citywide or station-area scope
 - 10-question hundred-block-line game with citywide or station-area scope
 - Best-match scoring across all returned drivable route alternatives
 - Editable route lines, draggable address guesses, and keyboard route entry
@@ -54,6 +54,7 @@ The checked-in GIS snapshots are not read by the browser. After intentionally
 refreshing those source files, regenerate the static question bank with:
 
     npm run generate:hundred-blocks
+    npm run generate:cross-streets
 
 The test suite covers:
 
@@ -76,13 +77,16 @@ The test suite covers:
     index.html                    Application shell and metadata
     styles.css                    Responsive interface and accessibility styles
     zones.js                      Station locations and response-zone GeoJSON
+    cross-street-data.js          Generated static active-address question bank
     hundred-block-data.js         Generated static citywide block-line bank
-    knowledge-data.js             Runtime question schema and cross-street bank
+    knowledge-data.js             Runtime question schema and immutable records
     training-core.js              Pure scoring and route-geometry functions
     main.js                       Maps integration and training lifecycle
+    data/cross-street-coverage.json   Address/segment coverage audit
     data/hundred-block-coverage.json  Included/excluded street audit
     data/source/                  Official GIS snapshots used by the generator
-    scripts/analyze-hundred-block-bank.js  Deterministic bank generator
+    scripts/analyze-cross-street-bank.js   Cross-street bank generator
+    scripts/analyze-hundred-block-bank.js  Hundred-block bank generator
     tests/training-core.test.js   Deterministic unit tests
     tests/knowledge-data.test.js  Question-bank integrity and source checks
     docs/QA.md                    Manual acceptance checklist
@@ -108,12 +112,12 @@ The improved local version:
 ## Street-training data
 
 The two recall games use checked-in question data rather than attempting to
-infer operational street relationships from live Google results. The
-cross-street bank remains a citywide set of ten verified address questions.
-The 100-block bank contains **609 questions covering 507 official block-line
-street names**. Selecting Station 1–7 filters that bank to verified
-intersections in the chosen response area; Any station uses every question
-once.
+infer operational street relationships from live Google results. The generated
+cross-street bank contains **2,914 active-address questions covering 724
+official street names**. The 100-block bank contains **609 questions covering
+507 official block-line street names**. Selecting Station 1–7 filters either
+bank to verified questions in the chosen response area; Any station draws from
+the complete citywide pool.
 
 The complete city-limit scan found 1,308 street-like names. The remaining 801
 are listed in `data/hundred-block-coverage.json` because the official ranges do
@@ -126,7 +130,8 @@ The bank includes the two reference examples:
 - `232 W Packard St` is bounded by `N Union St` and `N Church St`.
 - `W Packard St` divides the `1000 N` and `1100 N` blocks at `N Union St`.
 
-The records were generated and verified on 2026-08-26 from the City of
+The hundred-block records were generated on 2026-08-26, and the cross-street
+records were generated on 2026-08-27 from the City of
 Decatur's public [active-address layer](https://maps.decaturil.gov/arcgis/rest/services/Public/addresses/FeatureServer/0),
 [street-centerline layer](https://maps.decaturil.gov/arcgis/rest/services/Transportation/Street_Centerlines/FeatureServer/0),
 [city-limit layer](https://maps.decaturil.gov/arcgis/rest/services/Public/city_limits/FeatureServer/0),
@@ -135,25 +140,27 @@ The derivation follows [Decatur Code Chapter 35](https://decaturil.gov/DocumentC
 Main Street supplies the north/south and east/west numbering baselines, and
 numbers increase by 100 for each block.
 
-Each generated question stores its station IDs, representative coordinates,
-supporting crossing streets, and centerline feature IDs. A question is accepted
-only when two adjacent centerline segments prove consecutive hundred blocks and
-the named boundary street is within 25 feet of that intersection. Streets that
-bend or shift are kept as contextual prompts such as `W Olive St near N Union
-St`; conflicting answers are never silently collapsed.
+Each cross-street question matches a real active-address point and number to an
+official centerline range, requires two distinct named endpoint streets, and
+stores the address and centerline object IDs. Each hundred-block question stores
+its station IDs, representative coordinates, supporting crossing streets, and
+centerline feature IDs. A hundred-block question is accepted only when two
+adjacent centerline segments prove consecutive hundred blocks and the named
+boundary street is within 25 feet of that intersection. Streets that bend or
+shift are kept as contextual prompts such as `W Olive St near N Union St`;
+conflicting answers are never silently collapsed.
 
-Station-area counts in this snapshot are 107, 101, 150, 75, 112, 104, and 77
-for Stations 1–7 respectively. Shared boundary questions carry more than one
-station ID, so those counts intentionally overlap. The GIS relationships and
-territory assignments should still receive DFD operational review before
-deployment.
+Cross-street station-area counts are 519, 425, 617, 232, 377, 472, and 272 for
+Stations 1–7 respectively. Hundred-block station-area counts are 107, 101, 150,
+75, 112, 104, and 77. Shared boundary questions carry more than one station ID,
+so those counts intentionally overlap. The GIS relationships and territory
+assignments should still receive DFD operational review before deployment.
 
 During a recall game the Google map is concealed and removed from keyboard
 navigation so its labels cannot reveal an answer. The response-area selector
-stays available during a 100-block game; changing it immediately starts a new
-10-question session from the selected area and resets that session's score.
-The unrelated map-display controls remain locked. The current ten-question
-cross-street game remains citywide.
+stays available during both recall games; changing it immediately starts a new
+10-question session from the selected area and resets that session's score. The
+unrelated map-display controls remain locked.
 
 ## Google Maps configuration
 

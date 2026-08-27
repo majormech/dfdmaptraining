@@ -7,12 +7,15 @@ const path = require("node:path");
 const vm = require("node:vm");
 const crypto = require("node:crypto");
 
+const CrossStreetData = require("../cross-street-data.js");
 const HundredBlockData = require("../hundred-block-data.js");
 const KnowledgeData = require("../knowledge-data.js");
+const CrossCoverage = require("../data/cross-street-coverage.json");
 const Coverage = require("../data/hundred-block-coverage.json");
 const Core = require("../training-core.js");
 
-const EXPECTED_VERIFIED_DATE = "2026-08-26";
+const CROSS_STREET_VERIFIED_DATE = "2026-08-27";
+const HUNDRED_BLOCK_VERIFIED_DATE = "2026-08-26";
 const VALID_STATIONS = new Set(["1", "2", "3", "4", "5", "6", "7"]);
 const OFFICIAL_SOURCE_HOSTS = new Set([
   "maps.decaturil.gov",
@@ -20,10 +23,18 @@ const OFFICIAL_SOURCE_HOSTS = new Set([
 ]);
 
 test("knowledge data exports through CommonJS and the browser globals", function () {
-  assert.equal(KnowledgeData.schemaVersion, 2);
+  assert.equal(KnowledgeData.schemaVersion, 3);
+  assert.equal(CrossStreetData.schemaVersion, 1);
   assert.equal(HundredBlockData.schemaVersion, 1);
 
   const browserContext = { window: {} };
+  vm.runInNewContext(
+    fs.readFileSync(
+      path.resolve(__dirname, "..", "cross-street-data.js"),
+      "utf8"
+    ),
+    browserContext
+  );
   vm.runInNewContext(
     fs.readFileSync(
       path.resolve(__dirname, "..", "hundred-block-data.js"),
@@ -35,6 +46,7 @@ test("knowledge data exports through CommonJS and the browser globals", function
     fs.readFileSync(path.resolve(__dirname, "..", "knowledge-data.js"), "utf8"),
     browserContext
   );
+  assert.ok(browserContext.window.DFDCrossStreetData);
   assert.ok(browserContext.window.DFDHundredBlockData);
   assert.ok(browserContext.window.DFDKnowledgeData);
   assert.equal(
@@ -71,7 +83,12 @@ function validateQuestion(question) {
   assert.notEqual(question.id.trim(), "");
   assert.equal(typeof question.prompt, "string");
   assert.notEqual(question.prompt.trim(), "");
-  assert.equal(question.verifiedOn, EXPECTED_VERIFIED_DATE);
+  assert.equal(
+    question.verifiedOn,
+    question.id.startsWith("cross-")
+      ? CROSS_STREET_VERIFIED_DATE
+      : HUNDRED_BLOCK_VERIFIED_DATE
+  );
   validateStationIds(question);
   assert.equal(Array.isArray(question.answers), true);
   assert.equal(question.answers.length, 2);
@@ -97,7 +114,7 @@ function validateQuestion(question) {
 }
 
 test("generated citywide coverage is complete, deterministic, and auditable", function () {
-  assert.equal(Coverage.generatedOn, EXPECTED_VERIFIED_DATE);
+  assert.equal(Coverage.generatedOn, HUNDRED_BLOCK_VERIFIED_DATE);
   assert.equal(Coverage.counts.sourceSegments, 9545);
   assert.equal(Coverage.counts.cityIntersectingSegments, 5370);
   assert.equal(Coverage.counts.officialCityStreetNames, 1308);
@@ -135,11 +152,55 @@ test("generated citywide coverage is complete, deterministic, and auditable", fu
   });
 });
 
+test("generated cross-street coverage is complete, deterministic, and auditable", function () {
+  assert.equal(CrossCoverage.generatedOn, CROSS_STREET_VERIFIED_DATE);
+  assert.equal(CrossCoverage.counts.sourceActiveAddresses, 44268);
+  assert.equal(CrossCoverage.counts.sourceCenterlineSegments, 9545);
+  assert.equal(CrossCoverage.counts.candidateCenterlineSegments, 3331);
+  assert.equal(CrossCoverage.counts.officialCandidateStreetNames, 798);
+  assert.equal(CrossCoverage.counts.includedStreetNames, 724);
+  assert.equal(CrossCoverage.counts.excludedStreetNames, 74);
+  assert.equal(CrossCoverage.counts.matchedActiveAddresses, 24091);
+  assert.equal(CrossCoverage.counts.questionRecords, 2914);
+  assert.equal(CrossStreetData.questions.length, CrossCoverage.counts.questionRecords);
+  assert.equal(
+    KnowledgeData.crossStreetQuestions.length,
+    CrossCoverage.counts.questionRecords
+  );
+  assert.deepEqual(
+    CrossCoverage.sourceSnapshots.map(function (snapshot) {
+      return snapshot.featureCount;
+    }),
+    [2000, 2000, 2000, 2000, 1545, 10000, 10000, 10000, 10000, 4268, 7]
+  );
+  CrossCoverage.sourceSnapshots.forEach(function (snapshot) {
+    const contents = fs.readFileSync(path.resolve(__dirname, "..", snapshot.file));
+    assert.equal(contents.length, snapshot.bytes);
+    assert.equal(
+      crypto.createHash("sha256").update(contents).digest("hex"),
+      snapshot.sha256,
+      "Source snapshot changed without regenerating the cross-street bank: " + snapshot.file
+    );
+  });
+});
+
 test("every station has a substantial 100-block question pool", function () {
   Object.entries(Coverage.counts.stationQuestionCounts).forEach(function (entry) {
     const stationId = entry[0];
     const expectedCount = entry[1];
     const actual = KnowledgeData.hundredBlockQuestions.filter(function (question) {
+      return question.stationIds.includes(stationId);
+    });
+    assert.ok(actual.length >= 10, "Station " + stationId + " is undersupplied");
+    assert.equal(actual.length, expectedCount);
+  });
+});
+
+test("every station has a substantial cross-street question pool", function () {
+  Object.entries(CrossCoverage.counts.stationQuestionCounts).forEach(function (entry) {
+    const stationId = entry[0];
+    const expectedCount = entry[1];
+    const actual = KnowledgeData.crossStreetQuestions.filter(function (question) {
       return question.stationIds.includes(stationId);
     });
     assert.ok(actual.length >= 10, "Station " + stationId + " is undersupplied");
@@ -191,6 +252,15 @@ test("all questions include valid coordinates", function () {
 });
 
 test("generated questions retain source evidence and immutable metadata", function () {
+  KnowledgeData.crossStreetQuestions.forEach(function (question) {
+    assert.equal(typeof question.streetName, "string");
+    assert.equal(Array.isArray(question.verifiedUsing), true);
+    assert.ok(question.verifiedUsing.length > 0);
+    assert.equal(Number.isInteger(question.sourceAddressObjectId), true);
+    assert.equal(Number.isInteger(question.sourceCenterlineObjectId), true);
+    assert.equal(Number.isFinite(question.matchDistanceFeet), true);
+    assert.ok(question.matchDistanceFeet <= 500);
+  });
   KnowledgeData.hundredBlockQuestions.forEach(function (question) {
     assert.equal(typeof question.streetName, "string");
     assert.equal(Array.isArray(question.verifiedUsing), true);
@@ -204,7 +274,9 @@ test("generated questions retain source evidence and immutable metadata", functi
       assert.match(question.prompt, / near /);
     }
   });
+  assert.equal(Object.isFrozen(CrossStreetData), true);
   assert.equal(Object.isFrozen(HundredBlockData), true);
+  assert.equal(Object.isFrozen(KnowledgeData.crossStreetQuestions), true);
   assert.equal(Object.isFrozen(KnowledgeData.hundredBlockQuestions), true);
 });
 

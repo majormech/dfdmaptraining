@@ -47,6 +47,15 @@ Use this checklist before treating a local build as ready for deployment.
 ## Cross-street game
 
 - [ ] A game contains ten distinct active-address questions with no repeats.
+- [ ] Any station draws from all 2,914 generated questions.
+- [ ] Selecting Station 1–7 draws only questions whose stored `stationIds`
+      includes that station.
+- [ ] The response-area selector remains enabled during the game, including at
+      phone widths.
+- [ ] Changing the response area immediately starts a new round 1 of 10 in the
+      selected area and resets the session score.
+- [ ] Each station offers at least ten questions; current generated counts are
+      519, 425, 617, 232, 377, 472, and 272 for Stations 1–7.
 - [ ] Each question presents two labeled cross-street blanks.
 - [ ] Common forms such as `N Union St`, `North Union Street`, and `Union`
       match only the explicitly approved answer aliases.
@@ -70,8 +79,6 @@ Use this checklist before treating a local build as ready for deployment.
       100-block round, including at phone widths.
 - [ ] Changing the response area during a 100-block game immediately starts a
       new round 1 of 10 in the selected area and resets the session score.
-- [ ] The response-area selector remains locked during the citywide
-      cross-street recall game.
 - [ ] Each station offers at least ten questions; current generated counts are
       107, 101, 150, 75, 112, 104, and 77 for Stations 1–7.
 - [ ] `1000 N`, `N 1000`, and `1000 north block` normalize to the same answer.

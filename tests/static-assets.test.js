@@ -128,12 +128,16 @@ test("cross-street and hundred-block games are wired into the application shell"
   });
 
   assert.ok(
-    indexHtml.indexOf('src="hundred-block-data.js?v=0.4.1"') <
-      indexHtml.indexOf('src="knowledge-data.js?v=0.4.1"')
+    indexHtml.indexOf('src="cross-street-data.js?v=0.5.0"') <
+      indexHtml.indexOf('src="knowledge-data.js?v=0.5.0"')
   );
   assert.ok(
-    indexHtml.indexOf('src="knowledge-data.js?v=0.4.1"') <
-      indexHtml.indexOf('src="main.js?v=0.4.1"')
+    indexHtml.indexOf('src="hundred-block-data.js?v=0.5.0"') <
+      indexHtml.indexOf('src="knowledge-data.js?v=0.5.0"')
+  );
+  assert.ok(
+    indexHtml.indexOf('src="knowledge-data.js?v=0.5.0"') <
+      indexHtml.indexOf('src="main.js?v=0.5.0"')
   );
   assert.match(indexHtml, /<th scope="col">Prompt<\/th>/);
   assert.equal(mainJs.includes("function isKnowledgeMode"), true);
@@ -148,17 +152,17 @@ test("cross-street and hundred-block games are wired into the application shell"
   );
   assert.match(
     mainJs,
-    /ui\.stationSelect\.disabled\s*=\s*!mapReady \|\| roundBusy \|\| \(knowledgeActive && !hundredBlockActive\)/
+    /ui\.stationSelect\.disabled\s*=\s*!mapReady \|\| roundBusy/
   );
   assert.match(
     mainJs,
-    /function handleResponseAreaChange\(\)[\s\S]*?startRun\("hundred-blocks-game", GAME_ROUNDS, ui\.stationSelect\)/
+    /function handleResponseAreaChange\(\)[\s\S]*?isKnowledgeMode\(mode\)[\s\S]*?startRun\(mode, GAME_ROUNDS, ui\.stationSelect\)/
   );
   assert.match(
     mainJs,
     /function questionBankForMode\(mode, stationId\)[\s\S]*?question\.stationIds\.includes\(String\(stationId\)\)/
   );
-  assert.equal(mainJs.includes('mode === "hundred-blocks-game" ? selectedStationId : "any"'), true);
+  assert.equal(mainJs.includes('isKnowledgeMode(mode) ? selectedStationId : "any"'), true);
   assert.equal(mainJs.includes('"Station " + stationId + " response area"'), true);
   assert.match(indexHtml, /id="answer-feedback"[\s\S]*?aria-atomic="true"/);
   assert.match(
@@ -166,7 +170,7 @@ test("cross-street and hundred-block games are wired into the application shell"
     /function handleMapSelection[\s\S]*?!isMapSelectionMode\(currentMode\(\)\)/
   );
   assert.equal(stylesCss.includes('data-knowledge-active="true"'), true);
-  assert.equal(stylesCss.includes('data-hundred-block-active="true"'), true);
+  assert.equal(stylesCss.includes('data-station-scoped-active="true"'), true);
   assert.match(
     stylesCss,
     /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/

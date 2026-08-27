@@ -227,18 +227,19 @@ function isCurrentRound(runId, roundId) {
 
 function questionBankForMode(mode, stationId) {
   if (!KnowledgeData) return [];
+  let questions = [];
   if (mode === "cross-streets-game") {
-    return KnowledgeData.crossStreetQuestions || [];
+    questions = KnowledgeData.crossStreetQuestions || [];
+  } else if (mode === "hundred-blocks-game") {
+    questions = KnowledgeData.hundredBlockQuestions || [];
+  } else {
+    return [];
   }
-  if (mode === "hundred-blocks-game") {
-    const questions = KnowledgeData.hundredBlockQuestions || [];
-    if (!stationId || stationId === "any") return questions;
-    return questions.filter(function (question) {
-      return Array.isArray(question.stationIds) &&
-        question.stationIds.includes(String(stationId));
-    });
-  }
-  return [];
+  if (!stationId || stationId === "any") return questions;
+  return questions.filter(function (question) {
+    return Array.isArray(question.stationIds) &&
+      question.stationIds.includes(String(stationId));
+  });
 }
 
 function shuffledCopy(items) {
@@ -285,7 +286,7 @@ function updateGameUI() {
       ? "Station " + run.stationId
       : run.scopeLabel;
   const scopeSuffix =
-    mode === "hundred-blocks-game" && compactScopeLabel
+    isKnowledgeMode(mode) && compactScopeLabel
       ? " · " + compactScopeLabel
       : "";
 
@@ -319,16 +320,11 @@ function updateControls() {
       currentMode() === "hundred-blocks-game" &&
       currentRoundIs("settled")
   );
-  const hundredBlockActive = Boolean(
-    knowledgeActive && currentMode() === "hundred-blocks-game"
-  );
-
   modeButtons.forEach(function (button) {
     button.disabled = !mapReady || roundBusy;
   });
 
-  ui.stationSelect.disabled =
-    !mapReady || roundBusy || (knowledgeActive && !hundredBlockActive);
+  ui.stationSelect.disabled = !mapReady || roundBusy;
   ui.zonesCheckbox.disabled = !mapReady || knowledgeActive;
   ui.mapLabelsCheckbox.disabled = !mapReady || roundBusy || knowledgeActive;
   ui.textAnswerForm.hidden = !knowledgeActive;
@@ -343,7 +339,7 @@ function updateControls() {
   ui.routeLegend.hidden = !routeSession;
   ui.trainingControls.dataset.routeActive = String(routeMode);
   ui.header.dataset.knowledgeActive = String(knowledgeActive);
-  ui.header.dataset.hundredBlockActive = String(hundredBlockActive);
+  ui.header.dataset.stationScopedActive = String(knowledgeActive);
   ui.mapShell.dataset.knowledgeActive = String(knowledgeActive);
   if (knowledgeActive) {
     ui.mapElement.setAttribute("inert", "");
@@ -1067,8 +1063,7 @@ function startRun(mode, totalRounds, sourceButton) {
     ui.stationSelect && ui.stationSelect.value
       ? String(ui.stationSelect.value)
       : "any";
-  const stationId =
-    mode === "hundred-blocks-game" ? selectedStationId : "any";
+  const stationId = isKnowledgeMode(mode) ? selectedStationId : "any";
   const scopeLabel =
     stationId === "any"
       ? "Citywide"
@@ -1076,18 +1071,18 @@ function startRun(mode, totalRounds, sourceButton) {
   const questionBank = questionBankForMode(mode, stationId);
   if (isKnowledgeMode(mode) && questionBank.length < totalRounds) {
     ui.address.textContent = "Question bank unavailable";
-    setStatus(mode === "hundred-blocks-game"
-      ? scopeLabel +
-          " needs " +
-          totalRounds +
-          " verified 100-block questions, but only " +
-          questionBank.length +
-          " loaded."
-      : "This knowledge game needs " +
-          totalRounds +
-          " verified questions, but only " +
-          questionBank.length +
-          " loaded.");
+    const questionType =
+      mode === "hundred-blocks-game" ? "100-block" : "cross-street";
+    setStatus(
+      scopeLabel +
+        " needs " +
+        totalRounds +
+        " verified " +
+        questionType +
+        " questions, but only " +
+        questionBank.length +
+        " loaded."
+    );
     setStep("Check training data", "Reload after the question bank is restored.");
     return;
   }
@@ -1149,7 +1144,8 @@ function loadKnowledgeRound(run, round) {
     ui.answerHelp.textContent =
       "Street names only; abbreviations are accepted and order does not matter.";
     setStatus(
-      "Which two cross streets bound this address? Enter both street names."
+      run.scopeLabel +
+        ": Which two cross streets bound this address? Enter both street names."
     );
     setStep("Name both cross streets", "The map is concealed until the game ends.");
   } else {
@@ -2469,12 +2465,13 @@ function toggleHeaderPanel() {
 }
 
 function handleResponseAreaChange() {
+  const mode = currentMode();
   if (
     state.run &&
     state.run.active &&
-    currentMode() === "hundred-blocks-game"
+    isKnowledgeMode(mode)
   ) {
-    startRun("hundred-blocks-game", GAME_ROUNDS, ui.stationSelect);
+    startRun(mode, GAME_ROUNDS, ui.stationSelect);
   }
 }
 

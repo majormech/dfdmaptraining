@@ -1213,12 +1213,12 @@ th:last-child {
     display: none;
   }
 
-  .app-header[data-hundred-block-active="true"] .setup-panel {
+  .app-header[data-station-scoped-active="true"] .setup-panel {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-header[data-hundred-block-active="true"] .setup-panel .switch-control {
+  .app-header[data-station-scoped-active="true"] .setup-panel .switch-control {
     display: none;
   }
 
