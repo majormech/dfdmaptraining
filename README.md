@@ -15,7 +15,7 @@ choosing a hosting or backend platform.
 - 10-question hundred-block-line game with citywide or station-area scope
 - Best-match scoring across all returned drivable route alternatives
 - Editable route lines, draggable address guesses, and keyboard route entry
-- Station-specific or random-station address generation
+- Location and route calls drawn from the official active-address layer
 - Optional response-zone overlays
 - A Hide map labels switch that preserves the current drill and camera
 
@@ -77,11 +77,13 @@ The test suite covers:
     index.html                    Application shell and metadata
     styles.css                    Responsive interface and accessibility styles
     zones.js                      Station locations and response-zone GeoJSON
+    active-address-data.js        Generated location and route address bank
     cross-street-data.js          Generated static active-address question bank
     hundred-block-data.js         Generated static citywide block-line bank
     knowledge-data.js             Runtime question schema and immutable records
     training-core.js              Pure scoring and route-geometry functions
     main.js                       Maps integration and training lifecycle
+    data/active-address-coverage.json  Location/route address audit
     data/cross-street-coverage.json   Address/segment coverage audit
     data/hundred-block-coverage.json  Included/excluded street audit
     data/source/                  Official GIS snapshots used by the generator
@@ -96,8 +98,9 @@ The test suite covers:
 
 The improved local version:
 
-- scores the geocoder result's canonical location rather than the random probe;
-- rechecks canonical addresses against the selected response-zone polygon;
+- uses official active-address coordinates rather than random reverse-geocoding
+  probes;
+- assigns each usable address through the official response-area polygons;
 - locks each round before accepting a guess or route submission;
 - ignores late results from abandoned modes or rounds;
 - creates only one next-round timer;
@@ -108,6 +111,20 @@ The improved local version:
 - penalizes omitted route sections, detours, reversed travel, and poor
   endpoints; and
 - keeps the final score visible after a game ends.
+
+## Location and route address data
+
+Location and route rounds now draw from the complete official active-address
+snapshot instead of reverse-geocoding random map points. The source contains
+44,268 active records. The playable bank contains **43,163 unique addresses**
+with an official Station 1–7 response-area assignment. It excludes 849 records
+outside every supplied Still Alarm Territory and collapses 256 duplicate
+address labels; it does not invent a station assignment for either case.
+
+Selecting a response area filters both location and route rounds to that
+station before the game begins. Any station draws from the complete playable
+bank. Ten-round games shuffle ten distinct address records, and changing the
+response area during a run restarts at Round 1 with a reset score.
 
 ## Street-training data
 

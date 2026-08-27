@@ -28,8 +28,9 @@ The source services are:
 
 Run `npm run generate:hundred-blocks` and `npm run generate:cross-streets` from
 the project root after an intentional snapshot refresh. The generators write
-SHA-256 checksums and feature counts to their coverage JSON files; tests fail if
-a snapshot changes without matching regeneration.
+the cross-street and active-address browser banks plus SHA-256 checksums and
+feature counts in their coverage JSON files; tests fail if a snapshot changes
+without matching regeneration.
 
 The public layer metadata does not expose a useful edit timestamp or explicit
 reuse license. Confirm the City's current data-use terms and DFD operational

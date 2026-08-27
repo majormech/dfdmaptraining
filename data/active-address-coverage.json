@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-08-27",
+  "definition": "Every unique active Decatur address point that belongs to an official Still Alarm Territory.",
+  "methodology": [
+    "Load every record returned by the official active-address query for Decatur.",
+    "Require a usable address label and point geometry.",
+    "Assign the point to every containing official Still Alarm Territory.",
+    "Deduplicate identical address labels while retaining the lowest official OBJECTID."
+  ],
+  "sources": {
+    "activeAddresses": "https://maps.decaturil.gov/arcgis/rest/services/Public/addresses/FeatureServer/0",
+    "stationTerritories": "https://maps.decaturil.gov/arcgis/rest/services/Fire/Still_Alarm_Territories/FeatureServer/0"
+  },
+  "sourceSnapshots": [
+    {
+      "file": "data/source/active-addresses-0.geojson",
+      "featureCount": 10000,
+      "bytes": 3263473,
+      "sha256": "0fe498d03900b6e8acea5825ca308d410d64184a52d7d813104ee11f4e38832b"
+    },
+    {
+      "file": "data/source/active-addresses-10000.geojson",
+      "featureCount": 10000,
+      "bytes": 3271558,
+      "sha256": "3dc5ef493d61b3a93faf37f456d5e77e287be2cd62215807308f40280639dab5"
+    },
+    {
+      "file": "data/source/active-addresses-20000.geojson",
+      "featureCount": 10000,
+      "bytes": 3330290,
+      "sha256": "123497e42bd6f8287344411b87ec430582421fdcd9b5d6aaefda9f4193318945"
+    },
+    {
+      "file": "data/source/active-addresses-30000.geojson",
+      "featureCount": 10000,
+      "bytes": 3277769,
+      "sha256": "b3d713a46ff2b5ceb17214c2fb67feca41dfc497c6cdbc0612166d4187bdf064"
+    },
+    {
+      "file": "data/source/active-addresses-40000.geojson",
+      "featureCount": 4268,
+      "bytes": 1399182,
+      "sha256": "4b451fe08f30c4bff23a4f2ddcc5d79db2262581e3c427e0703b37fa9ad0f5d4"
+    },
+    {
+      "file": "data/source/still-alarm-territories.geojson",
+      "featureCount": 7,
+      "bytes": 1170340,
+      "sha256": "d1d1f2e5db05e52f408bb274d2ae42439d4337a95e3337b2403e9101b6ff8086"
+    }
+  ],
+  "counts": {
+    "sourceActiveAddresses": 44268,
+    "usableUniqueAddresses": 43163,
+    "stationAddressCounts": {
+      "1": 6284,
+      "2": 4741,
+      "3": 9175,
+      "4": 5228,
+      "5": 6532,
+      "6": 7579,
+      "7": 3624
+    }
+  },
+  "rejectionCounts": {
+    "missingPoint": 0,
+    "missingLabel": 0,
+    "noStation": 849,
+    "duplicateLabel": 256
+  }
+}

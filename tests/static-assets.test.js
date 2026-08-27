@@ -128,16 +128,20 @@ test("cross-street and hundred-block games are wired into the application shell"
   });
 
   assert.ok(
-    indexHtml.indexOf('src="cross-street-data.js?v=0.5.0"') <
-      indexHtml.indexOf('src="knowledge-data.js?v=0.5.0"')
+    indexHtml.indexOf('src="cross-street-data.js?v=0.6.0"') <
+      indexHtml.indexOf('src="knowledge-data.js?v=0.6.0"')
   );
   assert.ok(
-    indexHtml.indexOf('src="hundred-block-data.js?v=0.5.0"') <
-      indexHtml.indexOf('src="knowledge-data.js?v=0.5.0"')
+    indexHtml.indexOf('src="hundred-block-data.js?v=0.6.0"') <
+      indexHtml.indexOf('src="knowledge-data.js?v=0.6.0"')
   );
   assert.ok(
-    indexHtml.indexOf('src="knowledge-data.js?v=0.5.0"') <
-      indexHtml.indexOf('src="main.js?v=0.5.0"')
+    indexHtml.indexOf('src="active-address-data.js?v=0.6.0"') <
+      indexHtml.indexOf('src="main.js?v=0.6.0"')
+  );
+  assert.ok(
+    indexHtml.indexOf('src="knowledge-data.js?v=0.6.0"') <
+      indexHtml.indexOf('src="main.js?v=0.6.0"')
   );
   assert.match(indexHtml, /<th scope="col">Prompt<\/th>/);
   assert.equal(mainJs.includes("function isKnowledgeMode"), true);
@@ -156,13 +160,13 @@ test("cross-street and hundred-block games are wired into the application shell"
   );
   assert.match(
     mainJs,
-    /function handleResponseAreaChange\(\)[\s\S]*?isKnowledgeMode\(mode\)[\s\S]*?startRun\(mode, GAME_ROUNDS, ui\.stationSelect\)/
+    /function handleResponseAreaChange\(\)[\s\S]*?mode !== "idle"[\s\S]*?startRun\(mode, state\.run\.totalRounds, ui\.stationSelect\)/
   );
   assert.match(
     mainJs,
     /function questionBankForMode\(mode, stationId\)[\s\S]*?question\.stationIds\.includes\(String\(stationId\)\)/
   );
-  assert.equal(mainJs.includes('isKnowledgeMode(mode) ? selectedStationId : "any"'), true);
+  assert.equal(mainJs.includes("const stationId = selectedStationId"), true);
   assert.equal(mainJs.includes('"Station " + stationId + " response area"'), true);
   assert.match(indexHtml, /id="answer-feedback"[\s\S]*?aria-atomic="true"/);
   assert.match(
@@ -174,6 +178,18 @@ test("cross-street and hundred-block games are wired into the application shell"
   assert.match(
     stylesCss,
     /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/
+  );
+});
+
+test("location and route modes use the official active-address bank", function () {
+  assert.equal(mainJs.includes("const ActiveAddressData = window.DFDActiveAddressData"), true);
+  assert.equal(mainJs.includes("function activeAddressBankForStation"), true);
+  assert.equal(mainJs.includes("function officialAddressFromRecord"), true);
+  assert.equal(mainJs.includes("shuffledCopy(addressBank).slice(0, totalRounds)"), true);
+  assert.equal(mainJs.includes("address = await getRandomAddressForRound"), false);
+  assert.match(
+    mainJs,
+    /run\.addresses\[round\.index - 1\][\s\S]*?run\.stationId/
   );
 });
 

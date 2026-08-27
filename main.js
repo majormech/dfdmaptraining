@@ -7,6 +7,7 @@
 
 const Core = window.DFDTrainingCore;
 const KnowledgeData = window.DFDKnowledgeData;
+const ActiveAddressData = window.DFDActiveAddressData;
 const GAME_ROUNDS = 10;
 const DISTANCE_NEXT_DELAY_MS = 1700;
 const ROUTE_NEXT_DELAY_MS = 2100;
@@ -240,6 +241,45 @@ function questionBankForMode(mode, stationId) {
     return Array.isArray(question.stationIds) &&
       question.stationIds.includes(String(stationId));
   });
+}
+
+function activeAddressBankForStation(stationId) {
+  if (!ActiveAddressData || !Array.isArray(ActiveAddressData.addresses)) {
+    return [];
+  }
+  if (!stationId || stationId === "any") return ActiveAddressData.addresses;
+  const expectedStation = String(stationId);
+  return ActiveAddressData.addresses.filter(function (record) {
+    const stationIds = String(record[4] || "").split(",").filter(Boolean);
+    return stationIds.includes(expectedStation);
+  });
+}
+
+function officialAddressFromRecord(record, requestedStationId) {
+  if (!Array.isArray(record) || record.length < 5) return null;
+  const stationIds = String(record[4] || "").split(",").filter(Boolean);
+  const stationId =
+    requestedStationId && requestedStationId !== "any"
+      ? String(requestedStationId)
+      : stationIds[Math.floor(Math.random() * stationIds.length)];
+  const lat = Number(record[2]);
+  const lng = Number(record[3]);
+  if (
+    !Number.isInteger(Number(record[0])) ||
+    !String(record[1] || "").trim() ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    !stationId
+  ) {
+    return null;
+  }
+  return {
+    id: Number(record[0]),
+    label: String(record[1]) + ", Decatur, IL",
+    lat,
+    lng,
+    stationId,
+  };
 }
 
 function shuffledCopy(items) {
@@ -1063,12 +1103,15 @@ function startRun(mode, totalRounds, sourceButton) {
     ui.stationSelect && ui.stationSelect.value
       ? String(ui.stationSelect.value)
       : "any";
-  const stationId = isKnowledgeMode(mode) ? selectedStationId : "any";
+  const stationId = selectedStationId;
   const scopeLabel =
     stationId === "any"
       ? "Citywide"
       : "Station " + stationId + " response area";
   const questionBank = questionBankForMode(mode, stationId);
+  const addressBank = isKnowledgeMode(mode)
+    ? []
+    : activeAddressBankForStation(stationId);
   if (isKnowledgeMode(mode) && questionBank.length < totalRounds) {
     ui.address.textContent = "Question bank unavailable";
     const questionType =
@@ -1084,6 +1127,19 @@ function startRun(mode, totalRounds, sourceButton) {
         " loaded."
     );
     setStep("Check training data", "Reload after the question bank is restored.");
+    return;
+  }
+  if (!isKnowledgeMode(mode) && addressBank.length < totalRounds) {
+    ui.address.textContent = "Address bank unavailable";
+    setStatus(
+      scopeLabel +
+        " needs " +
+        totalRounds +
+        " official active addresses, but only " +
+        addressBank.length +
+        " loaded."
+    );
+    setStep("Check address data", "Reload after the official address bank is restored.");
     return;
   }
 
@@ -1107,6 +1163,9 @@ function startRun(mode, totalRounds, sourceButton) {
     questions: isKnowledgeMode(mode)
       ? shuffledCopy(questionBank).slice(0, totalRounds)
       : [],
+    addresses: isKnowledgeMode(mode)
+      ? []
+      : shuffledCopy(addressBank).slice(0, totalRounds),
     active: true,
   };
   state.round = null;
@@ -1204,44 +1263,29 @@ async function loadNextRound(runId) {
     return;
   }
 
-  const generationId = ++state.generationSequence;
-
   ui.address.textContent = "Finding a verified address…";
   setStatus(
-    "Checking a real address against the selected response zone."
+    "Loading an official active address from the selected response area."
   );
   setStep("Generating call", "The map will unlock when the address is ready.");
   setBusy(true);
   updateGameUI();
   updateControls();
 
-  let address;
-  try {
-    address = await getRandomAddressForRound();
-  } catch (error) {
-    if (
-      !isCurrentRound(runId, round.id) ||
-      generationId !== state.generationSequence
-    ) {
-      return;
-    }
-
+  const address = officialAddressFromRecord(
+    run.addresses[round.index - 1],
+    run.stationId
+  );
+  if (!address) {
     run.active = false;
     round.status = "error";
     ui.address.textContent = "Address unavailable";
-    setStatus(error.message || "A valid address could not be generated.");
-    setStep("Try again", "Start a new drill when the service is available.");
+    setStatus("An official active address could not be loaded for this round.");
+    setStep("Try again", "Start a new drill after the address bank is restored.");
     setBusy(false);
-    setMapStatus("error", "Address service issue");
+    setMapStatus("error", "Address data issue");
     updateGameUI();
     updateControls();
-    return;
-  }
-
-  if (
-    !isCurrentRound(runId, round.id) ||
-    generationId !== state.generationSequence
-  ) {
     return;
   }
 
@@ -2373,6 +2417,9 @@ async function initMap() {
     if (!KnowledgeData) {
       throw new Error("Street-training question data did not load.");
     }
+    if (!ActiveAddressData || !Array.isArray(ActiveAddressData.addresses)) {
+      throw new Error("The official active-address bank did not load.");
+    }
 
     const libraries = await Promise.all([
       google.maps.importLibrary("maps"),
@@ -2469,9 +2516,9 @@ function handleResponseAreaChange() {
   if (
     state.run &&
     state.run.active &&
-    isKnowledgeMode(mode)
+    mode !== "idle"
   ) {
-    startRun(mode, GAME_ROUNDS, ui.stationSelect);
+    startRun(mode, state.run.totalRounds, ui.stationSelect);
   }
 }
 

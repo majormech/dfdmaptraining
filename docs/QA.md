@@ -14,9 +14,11 @@ Use this checklist before treating a local build as ready for deployment.
 ## Address integrity
 
 - [ ] Each station-specific call displays the selected station.
-- [ ] The revealed marker corresponds to the displayed geocoded address.
-- [ ] The canonical address remains inside the selected response zone.
-- [ ] Quota and authorization errors stop retries and explain the issue.
+- [ ] The revealed marker uses the official active-address point for the
+      displayed label.
+- [ ] The address record includes the selected response-area membership.
+- [ ] Any station draws only from the 43,163 usable unique official addresses.
+- [ ] A missing or malformed address bank produces a visible startup error.
 
 ## Location drills
 
@@ -25,6 +27,8 @@ Use this checklist before treating a local build as ready for deployment.
 - [ ] The correct marker is hidden before the answer and visible afterward.
 - [ ] The score is labeled as a penalty and remains visible at completion.
 - [ ] A 10-round game contains exactly ten distinct settled rounds.
+- [ ] Changing the response area restarts at Round 1 with a reset score and a
+      new bank filtered to the selected station.
 
 ## Route drills
 
@@ -122,8 +126,7 @@ Use this checklist before treating a local build as ready for deployment.
 
 ## Mode changes and async safety
 
-- [ ] Switching modes invalidates the previous address request.
-- [ ] A late geocoder response cannot replace the current call.
+- [ ] Switching modes abandons the previous address round.
 - [ ] A late route response cannot score a newer game.
 - [ ] Starting another mode cancels the previous next-round timer.
 
