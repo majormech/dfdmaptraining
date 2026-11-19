@@ -259,10 +259,8 @@
   function parseHundredBlockAnswer(value) {
     const normalized = String(value || "")
       .toLowerCase()
-      .replace(/,/g, "")
       .replace(/(\d)([a-z])/g, "$1 $2")
       .replace(/([a-z])(\d)/g, "$1 $2")
-      .replace(/[^a-z0-9]+/g, " ")
       .trim();
     if (!normalized) {
       return { blockNumber: null, direction: null, normalized: "" };
@@ -270,9 +268,6 @@
 
     const words = normalized.split(/\s+/).filter(function (word) {
       return word !== "block" && word !== "blocks";
-    });
-    const numberTokens = words.filter(function (word) {
-      return /^\d+$/.test(word);
     });
     const directionMap = {
       n: "north",
@@ -284,11 +279,19 @@
       w: "west",
       west: "west",
     };
+    const numberTokens = words.filter(function (word) {
+      return !Object.hasOwn(directionMap, word);
+    });
+    const numberToken = numberTokens[0];
+    const number = numberTokens.length === 1 &&
+      /^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(numberToken)
+      ? Number(numberToken.replace(/,/g, ""))
+      : null;
     const directions = Array.from(
       new Set(
         words
           .filter(function (word) {
-            return Boolean(directionMap[word]);
+            return Object.hasOwn(directionMap, word);
           })
           .map(function (word) {
             return directionMap[word];
@@ -297,8 +300,7 @@
     );
 
     return {
-      blockNumber:
-        numberTokens.length === 1 ? Number(numberTokens[0]) : null,
+      blockNumber: Number.isSafeInteger(number) ? number : null,
       direction: directions.length === 1 ? directions[0] : null,
       normalized: words.join(" "),
     };
@@ -502,6 +504,70 @@
     return 100;
   }
 
+  function compareRouteOrder(referenceSamples, userSamples, toleranceFeet) {
+    function headings(points) {
+      return points.map(function (point, index) {
+        const before = points[Math.max(0, index - 1)];
+        const after = points[Math.min(points.length - 1, index + 1)];
+        const x = (after.lng - before.lng) * Math.cos(degreesToRadians(point.lat));
+        const y = after.lat - before.lat;
+        const length = Math.hypot(x, y);
+        return length ? [x / length, y / length] : [0, 0];
+      });
+    }
+
+    // Longest ordered sequence of nearby samples. A matched point is used once.
+    const referenceHeadings = headings(referenceSamples);
+    const userHeadings = headings(userSamples);
+    const columns = referenceSamples.length + 1;
+    const matches = new Uint16Array((userSamples.length + 1) * columns);
+    for (let row = 1; row <= userSamples.length; row += 1) {
+      const [userX, userY] = userHeadings[row - 1];
+      for (let column = 1; column < columns; column += 1) {
+        const index = row * columns + column;
+        const [referenceX, referenceY] = referenceHeadings[column - 1];
+        const sameDirection = userX * referenceX + userY * referenceY >= -0.25;
+        const nearby = sameDirection &&
+          haversineFeet(userSamples[row - 1], referenceSamples[column - 1]) <= toleranceFeet;
+        matches[index] = Math.max(
+          matches[index - 1],
+          matches[index - columns],
+          nearby ? matches[index - columns - 1] + 1 : 0
+        );
+      }
+    }
+
+    const matched = new Set();
+    let row = userSamples.length;
+    let column = referenceSamples.length;
+    while (row > 0 && column > 0) {
+      const index = row * columns + column;
+      if (matches[index] === matches[index - 1]) {
+        column -= 1;
+      } else if (matches[index] === matches[index - columns]) {
+        row -= 1;
+      } else {
+        matched.add(row - 1);
+        row -= 1;
+        column -= 1;
+      }
+    }
+
+    // Skip isolated unmatched samples caused by interpolation near a turn.
+    const departureIndex = userSamples.findIndex(function (_point, index) {
+      return index + 1 < userSamples.length &&
+        !matched.has(index) && !matched.has(index + 1);
+    });
+    const rejoinIndex = departureIndex < 0 ? -1 : userSamples.findIndex(function (_point, index) {
+      return index > departureIndex && matched.has(index);
+    });
+    return {
+      ratio: (2 * matches[matches.length - 1]) / (referenceSamples.length + userSamples.length),
+      departure: departureIndex < 0 ? null : userSamples[departureIndex],
+      rejoin: rejoinIndex < 0 ? null : userSamples[rejoinIndex],
+    };
+  }
+
   function computeRouteMatch(referenceInput, userInput, options) {
     const referencePath = normalizePath(referenceInput);
     const userPath = normalizePath(userInput);
@@ -595,9 +661,16 @@
     const directionFactor =
       forwardEndpointDistance <= reverseEndpointDistance ? 1 : 0.55;
 
+    const orderSpacing = Math.max(spacingFeet, Math.max(referenceLength, userLength) / 350);
+    const order = compareRouteOrder(
+      resamplePath(referencePath, orderSpacing),
+      resamplePath(userPath, orderSpacing),
+      toleranceFeet
+    );
     const weighted =
       coverageF1 * 0.7 + lengthRatio * 0.15 + endpointScore * 0.15;
-    const matchPercent = clamp(weighted * directionFactor * 100, 0, 100);
+    const orderFactor = coverageF1 > 0 ? Math.min(1, order.ratio / coverageF1) : 1;
+    const matchPercent = clamp(weighted * directionFactor * orderFactor * 100, 0, 100);
 
     return {
       matchPercent,
@@ -608,6 +681,8 @@
       directionFactor,
       referenceLength,
       userLength,
+      departure: order.departure,
+      rejoin: order.rejoin,
     };
   }
 

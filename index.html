@@ -92,6 +92,13 @@
           <span>Hide map labels</span>
         </label>
 
+        <label class="switch-control">
+          <input type="checkbox" id="practice-misses" disabled />
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>Practice my misses</span>
+        </label>
+        <button id="open-instructor" class="utility-button" type="button" disabled>Instructor routes</button>
+
       </section>
 
       <section
@@ -205,7 +212,7 @@
     <aside id="route-legend" class="route-legend" aria-label="Route colors" hidden>
       <span><i class="route-swatch user-route" aria-hidden="true"></i>Your route</span>
       <span id="accepted-route-legend" hidden>
-        <i class="route-swatch accepted-route" aria-hidden="true"></i>Closest accepted route
+        <i class="route-swatch accepted-route" aria-hidden="true"></i><span id="reference-route-label">Closest reference route</span>
       </span>
     </aside>
   </main>
@@ -252,7 +259,34 @@
         Submit route
       </button>
     </div>
+    <div class="review-actions" aria-label="Round review">
+      <button id="reveal-answer-map" class="utility-button" type="button" hidden>Reveal answer on map</button>
+      <button id="next-call" class="utility-button submit" type="button" hidden>Next call</button>
+      <button id="save-instructor-route" class="utility-button submit" type="button" hidden>Save approved route</button>
+    </div>
   </nav>
+
+  <dialog id="instructor-dialog" class="result-dialog" aria-labelledby="instructor-title">
+    <h2 id="instructor-title">Instructor routes</h2>
+    <form id="instructor-form" class="instructor-form">
+      <p>Approved routes are saved in this browser and used for matching station and address assignments.</p>
+      <label class="field">Official address
+        <input id="instructor-address" type="search" placeholder="Enter a street number and name" autocomplete="off" />
+      </label>
+      <label class="field">Matching address and station
+        <select id="instructor-match" required></select>
+      </label>
+      <label class="field">Route name <input id="instructor-name" required maxlength="80" /></label>
+      <label class="field">Instructor notes <textarea id="instructor-notes" maxlength="1000" rows="3"></textarea></label>
+      <p id="instructor-status" role="status"></p>
+      <ul id="instructor-routes" class="instructor-routes"></ul>
+      <div class="review-actions">
+        <button id="close-instructor" type="button" class="utility-button">Close</button>
+        <button id="practice-instructor-route" type="button" class="utility-button" hidden>Practice this call</button>
+        <button id="draw-instructor-route" type="submit" class="utility-button submit" disabled>Draw route</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="result-dialog" class="result-dialog" aria-labelledby="result-title">
     <div class="result-header">
@@ -297,7 +331,7 @@
   <script src="training-core.js?v=0.6.0"></script>
   <script src="main.js?v=0.6.0"></script>
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&v=weekly&libraries=geometry,geocoding,marker,routes&loading=async&callback=initMap"
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&v=weekly&libraries=marker,routes&loading=async&callback=initMap"
     async
     defer
     onerror="window.handleMapsLoadError && window.handleMapsLoadError()"

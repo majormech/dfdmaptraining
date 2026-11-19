@@ -217,6 +217,15 @@ test("hundred-block parser accepts compact forms but rejects ambiguity", functio
   assert.equal(Core.parseHundredBlockAnswer("1000 N S").direction, null);
 });
 
+test("malformed block numbers cannot earn number credit", function () {
+  const expected = { display: "1000 N block", aliases: [] };
+  for (const response of ["-1000 N", "10,00 N", "1000 N garbage", "1.000 N"]) {
+    const score = Core.scoreHundredBlockAnswer(response, expected);
+    assert.equal(score.numberCredit, 0, response);
+    assert.equal(score.directionCredit, 20, response);
+  }
+});
+
 test("hundred-block pair scoring favors exact numbers before directions", function () {
   const expected = [
     { display: "1000 N block", aliases: [] },
@@ -314,6 +323,33 @@ test("a reversed route is strongly penalized", function () {
   const result = Core.computeRouteMatch(route, reversed);
   assert.ok(result.matchPercent <= 56);
   assert.equal(result.directionFactor, 0.55);
+});
+
+test("an intermediate wrong-way loop loses credit even with identical endpoints", function () {
+  const start = { lat: 39.84, lng: -88.95 };
+  const east = { lat: 39.84, lng: -88.94 };
+  const northeast = { lat: 39.85, lng: -88.94 };
+  const north = { lat: 39.85, lng: -88.95 };
+  const finish = { lat: 39.851, lng: -88.95 };
+  const reference = [start, east, northeast, north, start, finish];
+  const reversedLoop = [start, north, northeast, east, start, finish];
+  const exact = Core.computeRouteMatch(reference, reference);
+  assert.equal(exact.matchPercent, 100);
+  assert.equal(exact.departure, null);
+  const result = Core.computeRouteMatch(reference, reversedLoop);
+  assert.ok(result.matchPercent < 75);
+  assert.equal(result.referenceCoverage, 1);
+  assert.ok(result.departure);
+  assert.ok(result.rejoin);
+
+  // Even a loop that fits inside the usual proximity tolerance has a direction.
+  const compact = (point) => ({
+    lat: start.lat + (point.lat - start.lat) * 0.05,
+    lng: start.lng + (point.lng - start.lng) * 0.05,
+  });
+  const compactResult = Core.computeRouteMatch(reference.map(compact), reversedLoop.map(compact));
+  assert.equal(compactResult.referenceCoverage, 1);
+  assert.ok(compactResult.matchPercent < 100);
 });
 
 test("a large detour reduces route match", function () {

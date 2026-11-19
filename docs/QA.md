@@ -41,12 +41,16 @@ Use this checklist before treating a local build as ready for deployment.
 - [ ] Undo removes exactly the last user-added point.
 - [ ] Clear retains the station origin and removes user-added points.
 - [ ] Submit can be accepted only once while a route is being calculated.
+- [ ] Both the drawn line and address pin are locked during calculation and
+      after scoring. Both can be edited again after a failed request.
 - [ ] A failed reference-route request leaves the drawing available to retry.
 - [ ] The red user route and teal reference route remain visible after scoring.
 - [ ] When alternatives are returned, the best match is selected and the
       other accepted routes appear as faint blue lines.
 - [ ] Sparse clicks along a correct road do not receive an artificial penalty.
 - [ ] Large detours and reversed routes receive a meaningful penalty.
+- [ ] A reversed intermediate loop loses credit even with identical endpoints.
+- [ ] Route review marks the first departure and rejoin when present.
 
 ## Cross-street game
 
@@ -104,7 +108,7 @@ Use this checklist before treating a local build as ready for deployment.
       N`, and `1800/1900 N`; it never appears as one unqualified answer.
 - [ ] Curved streets such as Burgener retain distinct north/south and east/west
       contextual variants instead of being merged.
-- [ ] After scoring, the weighted breakdown remains visible until Next question
+- [ ] After scoring, the weighted breakdown remains visible until Next call
       or View results is chosen.
 - [ ] The result summary shows total credit, average credit, and total penalty.
 - [ ] The final table contains ten rows and labels the question column Prompt.
@@ -128,7 +132,16 @@ Use this checklist before treating a local build as ready for deployment.
 
 - [ ] Switching modes abandons the previous address round.
 - [ ] A late route response cannot score a newer game.
-- [ ] Starting another mode cancels the previous next-round timer.
+- [ ] A settled round in any game stays on screen until Next call or View
+      results. Starting another mode discards that review.
+- [ ] Both recall modes can reveal the verified point, answer, and supported
+      street geometry after scoring. The next unanswered round conceals the map.
+- [ ] Practice my misses prioritizes saved misses for the active mode and station,
+      mixes in fresh prompts, and removes a miss after a successful retry.
+- [ ] Two approved routes can be saved for the same station and address. The
+      closest approved route and its notes appear in review after reloading.
+- [ ] Another station or address uses its own routes, or labeled Google
+      references when no approved routes are available.
 
 ## Map-label visibility
 
@@ -158,7 +171,7 @@ Use this checklist before treating a local build as ready for deployment.
 - [ ] At phone widths, all six training modes are visible in the two-column
       tray without horizontal scrolling or clipped labels.
 - [ ] At phone widths, a knowledge round hides the unused setup controls and
-      keeps both inputs, Check answer, weighted feedback, and Next question
+      keeps both inputs, Check answer, weighted feedback, and Next call
       reachable without horizontal scrolling.
 - [ ] At phone widths, expanding the setup panel overlays the map and collapsing
       it restores an unobstructed map without changing the map's height.

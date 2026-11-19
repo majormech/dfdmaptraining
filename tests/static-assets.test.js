@@ -148,7 +148,9 @@ test("cross-street and hundred-block games are wired into the application shell"
   assert.equal(mainJs.includes("function loadKnowledgeRound"), true);
   assert.equal(mainJs.includes("function settleKnowledgeRound"), true);
   assert.equal(mainJs.includes("Core.evaluateHundredBlockPair"), true);
-  assert.equal(mainJs.includes("function advanceHundredBlockRound"), true);
+  assert.equal(mainJs.includes("function advanceReviewedRound"), true);
+  assert.match(indexHtml, /id="next-call"/);
+  assert.match(indexHtml, /id="reveal-answer-map"/);
   assert.equal(mainJs.includes("function handleResponseAreaChange"), true);
   assert.match(
     mainJs,

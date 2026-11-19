@@ -9,9 +9,6 @@ const Core = window.DFDTrainingCore;
 const KnowledgeData = window.DFDKnowledgeData;
 const ActiveAddressData = window.DFDActiveAddressData;
 const GAME_ROUNDS = 10;
-const DISTANCE_NEXT_DELAY_MS = 1700;
-const ROUTE_NEXT_DELAY_MS = 2100;
-const KNOWLEDGE_NEXT_DELAY_MS = 2400;
 const MAP_LOAD_TIMEOUT_MS = 18000;
 const MAP_ID =
   document
@@ -70,6 +67,23 @@ const ui = {
   stationSelect: document.getElementById("station-select"),
   zonesCheckbox: document.getElementById("toggle-zones"),
   mapLabelsCheckbox: document.getElementById("toggle-map-labels"),
+  practiceMisses: document.getElementById("practice-misses"),
+  revealAnswerMap: document.getElementById("reveal-answer-map"),
+  nextCall: document.getElementById("next-call"),
+  referenceRouteLabel: document.getElementById("reference-route-label"),
+  openInstructor: document.getElementById("open-instructor"),
+  instructorDialog: document.getElementById("instructor-dialog"),
+  instructorForm: document.getElementById("instructor-form"),
+  instructorAddress: document.getElementById("instructor-address"),
+  instructorMatch: document.getElementById("instructor-match"),
+  instructorName: document.getElementById("instructor-name"),
+  instructorNotes: document.getElementById("instructor-notes"),
+  instructorStatus: document.getElementById("instructor-status"),
+  instructorRoutes: document.getElementById("instructor-routes"),
+  practiceInstructorRoute: document.getElementById("practice-instructor-route"),
+  drawInstructorRoute: document.getElementById("draw-instructor-route"),
+  closeInstructor: document.getElementById("close-instructor"),
+  saveInstructorRoute: document.getElementById("save-instructor-route"),
   address: document.getElementById("address"),
   status: document.getElementById("status"),
   modeLabel: document.getElementById("mode-label"),
@@ -121,12 +135,11 @@ const modeButtons = [
 
 const state = {
   mapReady: false,
+  mapStartupFailed: false,
   runSequence: 0,
   roundSequence: 0,
-  generationSequence: 0,
   run: null,
   round: null,
-  nextRoundTimer: null,
   lastPenalty: null,
   resultReturnFocus: null,
   mapLabelsHidden: false,
@@ -134,7 +147,6 @@ const state = {
 
 let map = null;
 let MapsMapClass = null;
-let geocoder = null;
 let AdvancedMarkerElementClass = null;
 let PinElementClass = null;
 let OverlayMarkerRendererClass = null;
@@ -146,16 +158,10 @@ let actualMarker = null;
 let guessMarker = null;
 let routePolyline = null;
 let referenceRoutePolylines = [];
+let reviewMarkers = [];
 let stationMarkers = [];
 let stationZonePolygons = [];
 const stationsById = {};
-
-const decaturBounds = {
-  minLat: 39.8,
-  maxLat: 39.9,
-  minLng: -89.05,
-  maxLng: -88.85,
-};
 
 const mapsLoadTimer = window.setTimeout(function () {
   if (!state.mapReady) {
@@ -293,6 +299,74 @@ function shuffledCopy(items) {
   return copy;
 }
 
+const MISSES_KEY = "dfd-trainer.misses.v1";
+const APPROVED_ROUTES_KEY = "dfd-trainer.approved-routes.v1";
+const sessionLists = new Map();
+
+function readTrainingList(key) {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key));
+    if (sessionLists.has(key)) return sessionLists.get(key);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return sessionLists.get(key) || [];
+  }
+}
+
+function writeTrainingList(key, entries) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(entries));
+    sessionLists.delete(key);
+    return true;
+  } catch {
+    if (key === MISSES_KEY) sessionLists.set(key, entries);
+    return false;
+  }
+}
+
+function practiceMode(mode) {
+  if (isKnowledgeMode(mode)) return mode;
+  return isRouteMode(mode) ? "route" : "location";
+}
+
+function recordPracticeOutcome(round, missed) {
+  const mode = practiceMode(state.run.mode);
+  const id = String(round.question?.id ?? round.address.id);
+  const stationId = round.address?.stationId ?? null;
+  const entries = readTrainingList(MISSES_KEY);
+  const remaining = entries.filter((entry) =>
+    entry?.mode !== mode || entry.id !== id || entry.stationId !== stationId
+  );
+  if (missed) remaining.unshift({ mode, id, stationId });
+  if (missed || remaining.length !== entries.length) {
+    writeTrainingList(MISSES_KEY, remaining.slice(0, 2000));
+  }
+}
+
+function practiceDeck(bank, mode, stationId, totalRounds) {
+  const entries = readTrainingList(MISSES_KEY).filter((entry) =>
+    entry?.mode === practiceMode(mode) &&
+    (stationId === "any" || entry.stationId === null || entry.stationId === stationId)
+  );
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const missed = [];
+  const fresh = [];
+  for (const item of bank) {
+    const entry = byId.get(String(item.id ?? item[0]));
+    if (entry) {
+      // Citywide route retries must use the station where the miss occurred.
+      missed.push({ item, stationId: entry.stationId });
+    } else {
+      fresh.push({ item, stationId: null });
+    }
+  }
+  const retryCount = Math.min(missed.length, Math.max(Math.ceil(totalRounds * 0.8), totalRounds - fresh.length));
+  return shuffledCopy([
+    ...shuffledCopy(missed).slice(0, retryCount),
+    ...shuffledCopy(fresh).slice(0, totalRounds - retryCount),
+  ]);
+}
+
 function resetTextAnswerPanel() {
   if (!ui.textAnswerForm) return;
   ui.textAnswerForm.reset();
@@ -320,7 +394,9 @@ function updateGameUI() {
     return;
   }
 
-  ui.modeLabel.textContent = run.active ? MODE_LABELS[mode] : "Complete";
+  ui.modeLabel.textContent = run.active
+    ? run.instructor ? "Instructor route" : MODE_LABELS[mode] + (run.practicingMisses ? " · Miss practice" : "")
+    : "Complete";
   const compactScopeLabel =
     run.stationId && run.stationId !== "any"
       ? "Station " + run.stationId
@@ -355,44 +431,50 @@ function updateControls() {
     isKnowledgeMode(currentMode()) && Boolean(state.run);
   const knowledgeActive = knowledgeSession && state.run.active;
   const knowledgeOpen = knowledgeActive && currentRoundIs("open");
-  const hundredBlockReview = Boolean(
-    knowledgeActive &&
-      currentMode() === "hundred-blocks-game" &&
-      currentRoundIs("settled")
-  );
   modeButtons.forEach(function (button) {
     button.disabled = !mapReady || roundBusy;
   });
 
-  ui.stationSelect.disabled = !mapReady || roundBusy;
+  ui.stationSelect.disabled = !mapReady || roundBusy || Boolean(state.run?.active && state.run.fixedAssignment);
   ui.zonesCheckbox.disabled = !mapReady || knowledgeActive;
   ui.mapLabelsCheckbox.disabled = !mapReady || roundBusy || knowledgeActive;
   ui.textAnswerForm.hidden = !knowledgeActive;
   ui.answerOne.disabled = !knowledgeOpen;
   ui.answerTwo.disabled = !knowledgeOpen;
-  ui.submitTextAnswer.disabled = !knowledgeOpen && !hundredBlockReview;
+  ui.submitTextAnswer.disabled = !knowledgeOpen;
+  ui.submitTextAnswer.hidden = !knowledgeOpen;
+  ui.practiceMisses.disabled = !mapReady || roundBusy || knowledgeActive;
+  ui.openInstructor.disabled = !mapReady || roundBusy || knowledgeActive;
+  const reviewReady = Boolean(state.run?.active && currentRoundIs("settled"));
+  const mapConcealed = knowledgeActive && !state.round?.mapRevealed;
+  ui.nextCall.hidden = !reviewReady;
+  ui.nextCall.textContent = state.round?.index === state.run?.totalRounds ? "View results" : "Next call";
+  ui.revealAnswerMap.hidden = !reviewReady || !mapConcealed;
+  ui.saveInstructorRoute.hidden = !state.run?.instructor || !currentRoundIs("open");
+  ui.saveInstructorRoute.disabled = !routePolyline || routePolyline.getPath().getLength() < 2;
 
   const routeSession =
     isRouteMode(currentMode()) && Boolean(state.run);
-  const routeMode = routeSession && state.run.active;
+  const routeMode = routeSession && state.run.active && !currentRoundIs("settled");
   ui.routeActions.hidden = !routeMode;
   ui.routeLegend.hidden = !routeSession;
   ui.trainingControls.dataset.routeActive = String(routeMode);
   ui.header.dataset.knowledgeActive = String(knowledgeActive);
   ui.header.dataset.stationScopedActive = String(knowledgeActive);
-  ui.mapShell.dataset.knowledgeActive = String(knowledgeActive);
-  if (knowledgeActive) {
+  ui.mapShell.dataset.knowledgeActive = String(mapConcealed);
+  if (mapConcealed) {
     ui.mapElement.setAttribute("inert", "");
     ui.mapElement.setAttribute("aria-hidden", "true");
   } else {
     ui.mapElement.removeAttribute("inert");
     ui.mapElement.removeAttribute("aria-hidden");
   }
-  ui.mapElement.tabIndex = knowledgeActive ? -1 : 0;
+  ui.mapElement.tabIndex = mapConcealed ? -1 : 0;
   ui.mapShell.dataset.selectable = String(
     Boolean(currentRoundIs("open") && isMapSelectionMode(currentMode()))
   );
 
+  ui.submitRoute.hidden = Boolean(state.run?.instructor);
   if (!routeMode) {
     if (!routeSession) ui.acceptedRouteLegend.hidden = true;
     ui.moveRouteGuess.disabled = true;
@@ -410,22 +492,10 @@ function updateControls() {
   const hasGuess = Boolean(guessMarker);
   const hasDrawnPoint = pathLength > 1;
 
-  ui.moveRouteGuess.disabled = !routeOpen || !hasGuess;
+  ui.moveRouteGuess.disabled = !routeOpen || !hasGuess || Boolean(state.run.instructor);
   ui.undoRoute.disabled = !routeOpen || !hasDrawnPoint;
   ui.clearRoute.disabled = !routeOpen || !hasDrawnPoint;
   ui.submitRoute.disabled = !routeOpen || !hasGuess || !hasDrawnPoint;
-}
-
-function clearNextRoundTimer() {
-  if (state.nextRoundTimer !== null) {
-    window.clearTimeout(state.nextRoundTimer);
-    state.nextRoundTimer = null;
-  }
-}
-
-function invalidatePendingWork() {
-  clearNextRoundTimer();
-  state.generationSequence += 1;
 }
 
 function setMarkerMap(marker, targetMap) {
@@ -455,6 +525,8 @@ function getMarkerPosition(marker) {
 }
 
 function clearRoundGraphics() {
+  reviewMarkers.forEach((marker) => marker.setMap(null));
+  reviewMarkers = [];
   setMarkerMap(actualMarker, null);
   setMarkerMap(guessMarker, null);
   actualMarker = null;
@@ -474,6 +546,9 @@ function clearRoundGraphics() {
     infoWindow.close();
   }
   resetTextAnswerPanel();
+  if (state.mapReady && state.mapLabelsHidden !== ui.mapLabelsCheckbox.checked) {
+    recreateMapForLabels(ui.mapLabelsCheckbox.checked);
+  }
 }
 
 function applyZoneVisibility() {
@@ -481,195 +556,6 @@ function applyZoneVisibility() {
   stationZonePolygons.forEach(function (entry) {
     entry.polygon.setMap(ui.zonesCheckbox.checked ? map : null);
   });
-}
-
-function randomBetween(min, max) {
-  return min + Math.random() * (max - min);
-}
-
-function geocodeLatLng(lat, lng) {
-  return new Promise(function (resolve, reject) {
-    geocoder.geocode({ location: { lat, lng } }, function (results, status) {
-      if (status === "OK" && results && results.length) {
-        resolve(results[0]);
-        return;
-      }
-      if (status === "ZERO_RESULTS") {
-        resolve(null);
-        return;
-      }
-
-      const error = new Error(
-        status === "OVER_QUERY_LIMIT"
-          ? "Google geocoding quota was reached. Wait a moment and try again."
-          : status === "REQUEST_DENIED"
-            ? "Google geocoding was denied. Check the Maps API configuration."
-            : "Google geocoding failed with status " + status + "."
-      );
-      error.code = status;
-      reject(error);
-    });
-  });
-}
-
-function getAddressComponent(components, type, useShortName) {
-  const component = components.find(function (candidate) {
-    return candidate.types.includes(type);
-  });
-  if (!component) return "";
-  return useShortName ? component.short_name : component.long_name;
-}
-
-function formatAddressFromResult(result) {
-  const components = result.address_components || [];
-  const house = getAddressComponent(components, "street_number", false);
-  const road = getAddressComponent(components, "route", false);
-  const city =
-    getAddressComponent(components, "locality", false) ||
-    getAddressComponent(components, "postal_town", false);
-  const stateCode =
-    getAddressComponent(
-      components,
-      "administrative_area_level_1",
-      true
-    ) || "IL";
-
-  if (!house || !road || !city) return null;
-  return house + " " + road + ", " + city + ", " + stateCode;
-}
-
-function canonicalAddressFromResult(result, stationId, polygons) {
-  if (!result || !result.geometry || !result.geometry.location) return null;
-
-  const label = formatAddressFromResult(result);
-  if (!label) return null;
-
-  const components = result.address_components || [];
-  const city =
-    getAddressComponent(components, "locality", false) ||
-    getAddressComponent(components, "postal_town", false);
-  if (!city || city.toLowerCase() !== "decatur") return null;
-
-  const location = result.geometry.location;
-  const lat = typeof location.lat === "function" ? location.lat() : location.lat;
-  const lng = typeof location.lng === "function" ? location.lng() : location.lng;
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-
-  if (stationId && polygons && polygons.length) {
-    const canonicalPoint = new google.maps.LatLng(lat, lng);
-    const insideSelectedZone = polygons.some(function (polygon) {
-      return google.maps.geometry.poly.containsLocation(
-        canonicalPoint,
-        polygon
-      );
-    });
-    if (!insideSelectedZone) return null;
-  }
-
-  return {
-    lat,
-    lng,
-    label,
-    stationId: stationId || null,
-  };
-}
-
-function getPolygonsForStation(stationId) {
-  return stationZonePolygons
-    .filter(function (entry) {
-      return entry.stationId === stationId;
-    })
-    .map(function (entry) {
-      return entry.polygon;
-    });
-}
-
-function getRandomPointInPolygon(polygon) {
-  const bounds = new google.maps.LatLngBounds();
-  const path = polygon.getPath();
-  for (let index = 0; index < path.getLength(); index += 1) {
-    bounds.extend(path.getAt(index));
-  }
-
-  const southWest = bounds.getSouthWest();
-  const northEast = bounds.getNorthEast();
-
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const point = new google.maps.LatLng(
-      randomBetween(southWest.lat(), northEast.lat()),
-      randomBetween(southWest.lng(), northEast.lng())
-    );
-    if (google.maps.geometry.poly.containsLocation(point, polygon)) {
-      return point;
-    }
-  }
-
-  return path.getAt(0);
-}
-
-async function getRandomDecaturAddressCityWide() {
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    const probeLat = randomBetween(decaturBounds.minLat, decaturBounds.maxLat);
-    const probeLng = randomBetween(decaturBounds.minLng, decaturBounds.maxLng);
-    const result = await geocodeLatLng(probeLat, probeLng);
-    const canonical = canonicalAddressFromResult(result, null, null);
-    if (canonical) return canonical;
-  }
-
-  throw new Error(
-    "No valid Decatur address was found. Try another round."
-  );
-}
-
-async function getRandomAddressInStationZone(stationId) {
-  const polygons = getPolygonsForStation(stationId);
-  if (!polygons.length) {
-    throw new Error(
-      "Station " + stationId + " does not have a loaded response zone."
-    );
-  }
-
-  for (let attempt = 0; attempt < 36; attempt += 1) {
-    const polygon = polygons[Math.floor(Math.random() * polygons.length)];
-    const probe = getRandomPointInPolygon(polygon);
-    const result = await geocodeLatLng(probe.lat(), probe.lng());
-    const canonical = canonicalAddressFromResult(
-      result,
-      stationId,
-      polygons
-    );
-    if (canonical) return canonical;
-  }
-
-  throw new Error(
-    "No valid address was found inside Station " +
-      stationId +
-      "'s response zone. Try again."
-  );
-}
-
-async function getRandomAddressForRound() {
-  const selectedStationId = ui.stationSelect.value;
-  const availableStationIds = Array.from(
-    new Set(
-      stationZonePolygons.map(function (entry) {
-        return entry.stationId;
-      })
-    )
-  ).sort();
-
-  if (!availableStationIds.length) {
-    return getRandomDecaturAddressCityWide();
-  }
-
-  const stationId =
-    selectedStationId === "any"
-      ? availableStationIds[
-          Math.floor(Math.random() * availableStationIds.length)
-        ]
-      : selectedStationId;
-
-  return getRandomAddressInStationZone(stationId);
 }
 
 function ensureOverlayMarkerRendererClass() {
@@ -895,6 +781,13 @@ class TrainingMarker {
     if (point) this.markerPosition = point;
   }
 
+  setDraggable(draggable) {
+    if (this.draggable === draggable) return;
+    this.detachRenderer();
+    this.draggable = draggable;
+    this.render();
+  }
+
   setOpacity(opacity) {
     const nextOpacity = Number(opacity) > 0 ? 1 : 0;
     if (this.opacity === nextOpacity) return;
@@ -1096,13 +989,13 @@ function updateRouteDrawingGuidance() {
   );
 }
 
-function startRun(mode, totalRounds, sourceButton) {
+function startRun(mode, totalRounds, sourceButton, assignment = null) {
   if (!state.mapReady) return;
 
-  const selectedStationId =
+  const selectedStationId = assignment?.stationId || (
     ui.stationSelect && ui.stationSelect.value
       ? String(ui.stationSelect.value)
-      : "any";
+      : "any");
   const stationId = selectedStationId;
   const scopeLabel =
     stationId === "any"
@@ -1111,7 +1004,7 @@ function startRun(mode, totalRounds, sourceButton) {
   const questionBank = questionBankForMode(mode, stationId);
   const addressBank = isKnowledgeMode(mode)
     ? []
-    : activeAddressBankForStation(stationId);
+    : assignment ? [assignment.record] : activeAddressBankForStation(stationId);
   if (isKnowledgeMode(mode) && questionBank.length < totalRounds) {
     ui.address.textContent = "Question bank unavailable";
     const questionType =
@@ -1143,14 +1036,20 @@ function startRun(mode, totalRounds, sourceButton) {
     return;
   }
 
-  invalidatePendingWork();
   if (state.run) state.run.active = false;
   state.lastPenalty = null;
   state.resultReturnFocus = sourceButton || document.activeElement;
   closeResults();
   clearRoundGraphics();
 
+  const deck = !assignment && ui.practiceMisses.checked
+    ? practiceDeck(isKnowledgeMode(mode) ? questionBank : addressBank, mode, stationId, totalRounds)
+    : null;
   state.run = {
+    instructor: assignment?.instructor,
+    fixedAssignment: Boolean(assignment),
+    practicingMisses: Boolean(deck),
+    practiceStations: deck?.map((entry) => entry.stationId) || [],
     id: ++state.runSequence,
     mode,
     totalRounds,
@@ -1161,11 +1060,11 @@ function startRun(mode, totalRounds, sourceButton) {
     stationId,
     scopeLabel,
     questions: isKnowledgeMode(mode)
-      ? shuffledCopy(questionBank).slice(0, totalRounds)
+      ? deck?.map((entry) => entry.item) || shuffledCopy(questionBank).slice(0, totalRounds)
       : [],
     addresses: isKnowledgeMode(mode)
       ? []
-      : shuffledCopy(addressBank).slice(0, totalRounds),
+      : deck?.map((entry) => entry.item) || shuffledCopy(addressBank).slice(0, totalRounds),
     active: true,
   };
   state.round = null;
@@ -1274,7 +1173,7 @@ async function loadNextRound(runId) {
 
   const address = officialAddressFromRecord(
     run.addresses[round.index - 1],
-    run.stationId
+    run.practiceStations[round.index - 1] || run.stationId
   );
   if (!address) {
     run.active = false;
@@ -1310,7 +1209,14 @@ async function loadNextRound(runId) {
     },
   });
 
-  if (isRouteMode(run.mode)) {
+  if (run.instructor) {
+    placeRouteGuess({ lat: address.lat, lng: address.lng });
+    guessMarker.setDraggable(false);
+    map.setCenter({ lat: address.lat, lng: address.lng });
+    map.setZoom(15);
+    setStatus("Draw from the assigned station to the official address, then save the approved route.");
+    setStep("Draw approved route", "The station and destination are fixed.");
+  } else if (isRouteMode(run.mode)) {
     setStatus(
       "Place the address on the map. Your route will start at the assigned station automatically."
     );
@@ -1335,14 +1241,88 @@ async function loadNextRound(runId) {
   updateControls();
 }
 
-function scheduleNextRound(runId, roundId, delayMs) {
-  clearNextRoundTimer();
-  state.nextRoundTimer = window.setTimeout(function () {
-    state.nextRoundTimer = null;
-    if (!isCurrentRound(runId, roundId)) return;
-    if (state.round.status !== "settled") return;
-    void loadNextRound(runId);
-  }, delayMs);
+function addReviewMarker(position, title, glyph) {
+  reviewMarkers.push(createMarker({
+    position, map, title,
+    pin: { background: "#136f78", glyphText: glyph },
+  }));
+}
+
+let centerlinesPromise;
+
+function loadReviewCenterlines() {
+  if (!centerlinesPromise) {
+    centerlinesPromise = Promise.all(
+      [0, 2000, 4000, 6000, 8000].map(async (offset) => {
+        const response = await fetch("data/source/street-centerlines-" + offset + ".geojson");
+        if (!response.ok) throw new Error("Street geometry is unavailable.");
+        return (await response.json()).features;
+      })
+    ).then((pages) => new Map(pages.flat().map((feature) => [
+      Number(feature.properties.OBJECTID), feature,
+    ]))).catch((error) => {
+      centerlinesPromise = null;
+      throw error;
+    });
+  }
+  return centerlinesPromise;
+}
+
+async function revealKnowledgeMap() {
+  const round = state.round;
+  if (!round?.question || round.status !== "settled" || round.mapRevealed) return;
+  round.mapRevealed = true;
+  const question = round.question;
+  const answers = question.answers.map((answer) => answer.display);
+  const crossStreet = currentMode() === "cross-streets-game";
+  if (state.mapLabelsHidden) {
+    recreateMapForLabels(false);
+  }
+  updateControls();
+  setHeaderPanelExpanded(false);
+  map.setCenter(question.coordinates);
+  map.setZoom(17);
+  const resultLines = [{ label: crossStreet ? "Bounding streets" : "Adjoining blocks", value: answers.join(" and ") }];
+  if (!crossStreet && question.verifiedUsing.length) {
+    resultLines.push({ label: "Verified on", value: question.verifiedUsing.join(", ") });
+  }
+  addReviewMarker(question.coordinates, question.prompt, "✓");
+  showMapResult(question.coordinates, question.prompt, resultLines);
+  setStep("Answer shown on map", answers.join(" and "));
+  ui.nextCall.focus({ preventScroll: true });
+
+  try {
+    const centerlines = await loadReviewCenterlines();
+    if (!isCurrentRound(round.runId, round.id)) return;
+    const sourceIds = crossStreet ? [question.sourceCenterlineObjectId] : question.sourceFeatureIds;
+    const paths = sourceIds.flatMap((id) => {
+      const geometry = centerlines.get(id)?.geometry;
+      const lines = geometry?.type === "LineString"
+        ? [geometry.coordinates]
+        : geometry?.type === "MultiLineString" ? geometry.coordinates : [];
+      return lines.map((line) => line.map(([lng, lat]) => ({ lat, lng })));
+    });
+    const nearbyPaths = crossStreet ? paths : paths.filter((path) =>
+      Core.distanceToPathFeet(question.coordinates, path) <= 150
+    );
+    referenceRoutePolylines = nearbyPaths.map((path) => new google.maps.Polyline({
+      map, path, strokeColor: "#13b8c4", strokeOpacity: 0.9, strokeWeight: 6, clickable: false,
+    }));
+    if (crossStreet && nearbyPaths.length) {
+      const properties = centerlines.get(sourceIds[0]).properties;
+      const first = nearbyPaths[0][0];
+      const last = nearbyPaths.at(-1).at(-1);
+      if (first && last && properties.SB_FSTREET && properties.SB_TSTREET) {
+        addReviewMarker(first, properties.SB_FSTREET, "1");
+        addReviewMarker(last, properties.SB_TSTREET, "2");
+      }
+      fitPoints([question.coordinates, ...nearbyPaths.flat()]);
+    }
+  } catch {
+    if (isCurrentRound(round.runId, round.id)) {
+      setStatus("Street geometry could not load. The verified point and answers are still shown.");
+    }
+  }
 }
 
 function fitPoints(points) {
@@ -1452,6 +1432,7 @@ function settleDistanceRound(latLng) {
     penalty,
   };
   run.details.push(detail);
+  recordPracticeOutcome(round, penalty > 1);
   if (run.totalRounds > 1) run.totalPenalty += penalty;
 
   setStatus(
@@ -1461,28 +1442,20 @@ function settleDistanceRound(latLng) {
       penalty +
       " penalty points."
   );
-  setStep(
-    "Round complete",
-    run.totalRounds > 1 && round.index < run.totalRounds
-      ? "The next address will load automatically."
-      : "Start another drill whenever you are ready."
-  );
-  updateGameUI();
+  reviewSettledRound(run, round, "Round complete", "Review the location on the map.");
+}
 
-  if (run.totalRounds > 1) {
-    if (round.index >= run.totalRounds) {
-      finishRun(run.id);
-    } else {
-      scheduleNextRound(
-        run.id,
-        round.id,
-        DISTANCE_NEXT_DELAY_MS
-      );
-    }
-  } else {
-    run.active = false;
-    updateGameUI();
-    updateControls();
+function reviewSettledRound(run, round, title, detail) {
+  if (run.totalRounds === 1) run.active = false;
+  setStep(title, detail);
+  updateGameUI();
+  updateControls();
+  if (run.active) {
+    window.requestAnimationFrame(function () {
+      if (isCurrentRound(run.id, round.id) && round.status === "settled") {
+        ui.nextCall.focus({ preventScroll: true });
+      }
+    });
   }
 }
 
@@ -1596,48 +1569,21 @@ function settleKnowledgeRound() {
     penalty,
   });
 
-  setStep(
-    "Answer checked",
-    isHundredBlockRound
-      ? round.index < run.totalRounds
-        ? "Review the breakdown, then choose Next question."
-        : "Review the breakdown, then choose View results."
-      : round.index < run.totalRounds
-        ? "Review the answer; the next question will open automatically."
-        : "Review the answer; your results will open automatically."
-  );
-  if (isHundredBlockRound) {
-    ui.submitTextAnswer.textContent =
-      round.index < run.totalRounds ? "Next question" : "View results";
-  }
-  updateGameUI();
-  updateControls();
-  if (isHundredBlockRound) {
-    window.requestAnimationFrame(function () {
-      ui.submitTextAnswer.focus({ preventScroll: true });
-      ui.answerFeedback.scrollIntoView({ block: "nearest" });
-    });
-  } else {
-    scheduleNextRound(run.id, round.id, KNOWLEDGE_NEXT_DELAY_MS);
-  }
+  recordPracticeOutcome(round, earnedCredit < 100);
+  reviewSettledRound(run, round, "Answer checked", "Review the answer or reveal it on the map.");
 }
 
-function advanceHundredBlockRound() {
-  const round = state.round;
-  const run = state.run;
-  if (
-    !round ||
-    !run ||
-    run.mode !== "hundred-blocks-game" ||
-    round.status !== "settled"
-  ) {
+function advanceReviewedRound() {
+  if (!state.run?.active || !currentRoundIs("settled")) return;
+  if (state.round.index >= state.run.totalRounds) {
+    if (state.round.mapRevealed) clearRoundGraphics();
+    finishRun(state.run.id);
     return;
   }
-
-  round.status = "advancing";
+  state.round.status = "advancing";
   setBusy(true);
   updateControls();
-  void loadNextRound(run.id);
+  void loadNextRound(state.run.id);
 }
 
 function placeRouteGuess(latLng) {
@@ -1705,7 +1651,7 @@ function undoRoutePoint() {
 }
 
 function moveRouteGuess() {
-  if (!currentRoundIs("open") || !guessMarker) return;
+  if (!currentRoundIs("open") || !guessMarker || state.run.instructor) return;
   setMarkerMap(guessMarker, null);
   guessMarker = null;
   state.round.routeStep = "place-guess";
@@ -1728,6 +1674,129 @@ function clearRoute() {
   ]);
   updateRouteDrawingGuidance();
   updateControls();
+}
+
+let instructorMatches = [];
+
+function getApprovedRoutes(address) {
+  return readTrainingList(APPROVED_ROUTES_KEY).filter((route) =>
+    route?.addressId === address.id && route.stationId === address.stationId &&
+    typeof route.name === "string" && typeof route.notes === "string" &&
+    Array.isArray(route.path) && Core.normalizePath(route.path).length > 1
+  );
+}
+
+function refreshInstructorRoutes() {
+  ui.instructorRoutes.replaceChildren();
+  const match = instructorMatches[ui.instructorMatch.value];
+  ui.drawInstructorRoute.disabled = !match;
+  ui.practiceInstructorRoute.hidden = true;
+  if (!match) return;
+
+  const address = officialAddressFromRecord(match.record, match.stationId);
+  const routes = getApprovedRoutes(address);
+  ui.practiceInstructorRoute.hidden = routes.length === 0;
+  ui.instructorStatus.textContent = routes.length
+    ? routes.length + (routes.length === 1 ? " approved route for this assignment." : " approved routes for this assignment.")
+    : "No approved routes for this assignment.";
+  for (const route of routes) {
+    const row = document.createElement("li");
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "utility-button";
+    remove.textContent = "Remove";
+    remove.setAttribute("aria-label", "Remove " + route.name);
+    remove.addEventListener("click", () => {
+      const remaining = readTrainingList(APPROVED_ROUTES_KEY).filter((entry) => entry?.id !== route.id);
+      if (writeTrainingList(APPROVED_ROUTES_KEY, remaining)) {
+        refreshInstructorRoutes();
+        ui.instructorMatch.focus();
+      } else {
+        ui.instructorStatus.textContent = "Browser storage is unavailable. The route was not removed.";
+      }
+    });
+    row.append(route.name + (route.notes ? " · " + route.notes : ""), remove);
+    ui.instructorRoutes.append(row);
+  }
+}
+
+function refreshInstructorMatches() {
+  const term = ui.instructorAddress.value.trim().toLowerCase().replace(/\s+/g, " ");
+  instructorMatches = [];
+  ui.instructorMatch.replaceChildren(new Option("Select an address and station", ""));
+  if (term.length >= 3) {
+    for (const record of ActiveAddressData.addresses) {
+      if (!String(record[1]).toLowerCase().includes(term)) continue;
+      for (const stationId of String(record[4]).split(",")) {
+        const index = instructorMatches.push({ record, stationId }) - 1;
+        ui.instructorMatch.add(new Option(record[1] + " · Station " + stationId, String(index)));
+      }
+      if (instructorMatches.length >= 30) break;
+    }
+  }
+  ui.instructorStatus.textContent = term.length < 3 ? "Enter at least three characters."
+    : instructorMatches.length ? "Choose the address and station." : "No matching official address.";
+  refreshInstructorRoutes();
+}
+
+function openInstructorRoutes() {
+  if (!state.mapReady) return;
+  if (!ui.instructorMatch.options.length) refreshInstructorMatches();
+  refreshInstructorRoutes();
+  ui.instructorDialog.showModal();
+  ui.instructorAddress.focus();
+}
+
+function startInstructorRoute(event) {
+  event.preventDefault();
+  const match = instructorMatches[ui.instructorMatch.value];
+  const name = ui.instructorName.value.trim();
+  if (!match || !name) {
+    ui.instructorStatus.textContent = "Choose an assignment and enter a route name.";
+    return;
+  }
+  const notes = ui.instructorNotes.value.trim();
+  ui.instructorDialog.close();
+  startRun("route-single", 1, ui.openInstructor, { ...match, instructor: { name, notes } });
+}
+
+function practiceInstructorRoute() {
+  const match = instructorMatches[ui.instructorMatch.value];
+  if (!match) return;
+  ui.instructorDialog.close();
+  startRun("route-single", 1, ui.openInstructor, match);
+}
+
+function saveInstructorRoute() {
+  const run = state.run;
+  const round = state.round;
+  if (!run?.instructor || round?.status !== "open" || !routePolyline) return;
+  const path = Core.normalizePath(routePolyline.getPath().getArray());
+  if (path.length < 2) return;
+  const { id: addressId, stationId, lat, lng } = round.address;
+  const destination = { lat, lng };
+  if (Core.pathLengthFeet(path) < 1) {
+    setStatus("Draw the route before saving.");
+    return;
+  }
+  if (Core.haversineFeet(path[path.length - 1], destination) > 250) {
+    setStatus("Extend the drawing to the marked address before saving.");
+    return;
+  }
+  if (Core.haversineFeet(path[path.length - 1], destination) > 1) path.push(destination);
+  const { name, notes } = run.instructor;
+  const routes = readTrainingList(APPROVED_ROUTES_KEY);
+  const route = { id: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2), addressId, stationId, name, notes, path };
+  if (!writeTrainingList(APPROVED_ROUTES_KEY, [...routes, route])) {
+    setStatus("Browser storage is unavailable. The drawing is still open so you can retry.");
+    return;
+  }
+  round.status = "settled";
+  setRoutePath(path);
+  setRouteEditable(false);
+  setStatus("Saved " + name + " for " + round.address.label + " from Station " + stationId + ".");
+  reviewSettledRound(run, round, "Approved route saved", "Open Instructor routes to review saved routes or draw another option.");
+  ui.openInstructor.focus();
 }
 
 async function requestReferenceRoutes(origin, destination) {
@@ -1819,7 +1888,7 @@ function appendGuessToPath(path, guessPosition) {
 async function submitRoute() {
   const round = state.round;
   const run = state.run;
-  if (!round || !run || round.status !== "open") return;
+  if (!round || !run || run.instructor || round.status !== "open") return;
   if (!guessMarker) {
     setStatus("Place your address guess before submitting a route.");
     return;
@@ -1854,6 +1923,8 @@ async function submitRoute() {
   drawnPathSnapshot[0] = origin;
   const userPath = appendGuessToPath(drawnPathSnapshot, guessSnapshot);
   round.status = "submitting";
+  guessMarker.setDraggable(false);
+  guessMarker.setPosition(guessSnapshot);
   setRoutePath(userPath);
   setRouteEditable(false);
 
@@ -1870,14 +1941,16 @@ async function submitRoute() {
     addressSnapshot.lng
   );
 
+  const approvedRoutes = getApprovedRoutes(addressSnapshot);
   let referenceRoutes;
   try {
-    referenceRoutes = await requestReferenceRoutes(origin, destination);
+    referenceRoutes = approvedRoutes.length ? approvedRoutes : await requestReferenceRoutes(origin, destination);
   } catch (error) {
     if (!isCurrentRound(runId, roundId)) return;
     round.status = "open";
     setRoutePath(drawnPathSnapshot);
     setRouteEditable(true);
+    guessMarker.setDraggable(true);
     setBusy(false);
     setStatus(error.message + " You can try Submit again.");
     setStep(
@@ -1896,13 +1969,10 @@ async function submitRoute() {
   }
 
   round.status = "settled";
-  const referencePaths = referenceRoutes
-    .map(function (candidate) {
-      return Core.normalizePath(candidate.path);
-    })
-    .filter(function (path) {
-      return path.length > 1;
-    });
+  const candidates = referenceRoutes.map((candidate) => ({
+    ...candidate, path: Core.normalizePath(candidate.path),
+  })).filter((candidate) => candidate.path.length > 1);
+  const referencePaths = candidates.map((candidate) => candidate.path);
   const bestMatch = Core.computeBestRouteMatch(
     referencePaths,
     userPath
@@ -1912,12 +1982,17 @@ async function submitRoute() {
     round.status = "open";
     setRoutePath(drawnPathSnapshot);
     setRouteEditable(true);
+    guessMarker.setDraggable(true);
     setBusy(false);
     setStatus("No usable reference route was available. Try Submit again.");
     updateControls();
     return;
   }
-  const referencePath = referencePaths[bestMatch.selectedIndex];
+  const closestRoute = candidates[bestMatch.selectedIndex];
+  const referencePath = closestRoute.path;
+  const referenceName = approvedRoutes.length
+    ? closestRoute.name + " (instructor-approved)"
+    : "Google reference " + (bestMatch.selectedIndex + 1) + " of " + referencePaths.length;
   const routePenalty = Core.scoreRoutePenalty(comparison.matchPercent);
   const distanceFeet = Core.haversineFeet(
     Core.normalizePoint(guessSnapshot),
@@ -1951,25 +2026,23 @@ async function submitRoute() {
     });
   });
   ui.acceptedRouteLegend.hidden = false;
+  ui.referenceRouteLabel.textContent = approvedRoutes.length ? "Closest instructor-approved route" : "Closest Google reference";
+  if (comparison.departure) addReviewMarker(comparison.departure, "First significant departure", "1");
+  if (comparison.rejoin) addReviewMarker(comparison.rejoin, "First rejoin", "2");
 
-  showMapResult(destination, addressSnapshot.label, [
+  const resultLines = [
     { label: "Location error", value: Math.round(distanceFeet) + " ft" },
     { label: "Location penalty", value: String(locationPenalty) },
     {
       label: "Route match",
       value: comparison.matchPercent.toFixed(1) + "%",
     },
-    {
-      label: "Accepted option",
-      value:
-        "Route " +
-        (bestMatch.selectedIndex + 1) +
-        " of " +
-        referencePaths.length,
-    },
+    { label: "Reference", value: referenceName },
     { label: "Route penalty", value: String(routePenalty) },
     { label: "Round penalty", value: String(totalPenalty), strong: true },
-  ]);
+  ];
+  if (closestRoute.notes) resultLines.push({ label: "Instructor notes", value: closestRoute.notes });
+  showMapResult(destination, addressSnapshot.label, resultLines);
   fitPoints(referencePath.concat(userPath));
 
   run.details.push({
@@ -1978,8 +2051,7 @@ async function submitRoute() {
       Math.round(distanceFeet) +
       " ft · " +
       comparison.matchPercent.toFixed(1) +
-      "% route · best of " +
-      referencePaths.length,
+      "% route · " + referenceName + (closestRoute.notes ? " · " + closestRoute.notes : ""),
     penalty: totalPenalty,
   });
   if (run.totalRounds > 1) run.totalPenalty += totalPenalty;
@@ -1996,33 +2068,17 @@ async function submitRoute() {
       totalPenalty +
       " total penalty."
   );
-  setStep(
-    "Route scored",
-    run.totalRounds > 1 && round.index < run.totalRounds
-      ? "The next address will load automatically."
-      : referencePaths.length > 1
-        ? "Red is your route; teal is the closest accepted route; faint blue lines are other options."
-        : "Red is your route; teal is the accepted route."
-  );
-  updateGameUI();
-  updateControls();
-
-  if (run.totalRounds > 1) {
-    if (round.index >= run.totalRounds) {
-      finishRun(run.id);
-    } else {
-      scheduleNextRound(run.id, round.id, ROUTE_NEXT_DELAY_MS);
-    }
-  } else {
-    run.active = false;
-    updateGameUI();
-    updateControls();
-  }
+  recordPracticeOutcome(round, locationPenalty > 1 || routePenalty > 1);
+  const reviewDetail = comparison.rejoin
+    ? "Marker 1 shows your first departure; marker 2 shows where you rejoin."
+    : comparison.departure
+      ? "Marker 1 shows your first departure. No rejoin was found."
+      : "Review your route and the closest reference on the map.";
+  reviewSettledRound(run, round, "Route scored", reviewDetail);
 }
 
 function finishRun(runId) {
   if (!isCurrentRun(runId)) return;
-  clearNextRoundTimer();
   state.run.active = false;
   setBusy(false);
   const isHundredBlockRun = state.run.mode === "hundred-blocks-game";
@@ -2349,7 +2405,7 @@ function activeTrainingMarkers() {
   return Array.from(
     new Set(
       stationMarkers
-        .concat([actualMarker, guessMarker])
+        .concat([actualMarker, guessMarker], reviewMarkers)
         .filter(Boolean)
     )
   );
@@ -2408,7 +2464,7 @@ function recreateMapForLabels(hideMapLabels) {
 }
 
 async function initMap() {
-  window.clearTimeout(mapsLoadTimer);
+  if (state.mapStartupFailed || state.mapReady) return;
 
   try {
     if (!Core) {
@@ -2423,15 +2479,13 @@ async function initMap() {
 
     const libraries = await Promise.all([
       google.maps.importLibrary("maps"),
-      google.maps.importLibrary("geocoding"),
       google.maps.importLibrary("marker"),
       google.maps.importLibrary("routes"),
-      google.maps.importLibrary("geometry"),
     ]);
     const mapsLibrary = libraries[0];
-    const geocodingLibrary = libraries[1];
-    const markerLibrary = libraries[2];
-    const routesLibrary = libraries[3];
+    if (state.mapStartupFailed) return;
+    const markerLibrary = libraries[1];
+    const routesLibrary = libraries[2];
     AdvancedMarkerElementClass = markerLibrary.AdvancedMarkerElement;
     PinElementClass = markerLibrary.PinElement;
     RouteClass = routesLibrary.Route;
@@ -2444,11 +2498,11 @@ async function initMap() {
       ui.mapElement,
       buildMapOptions(getMapCameraSnapshot(), state.mapLabelsHidden)
     );
-    geocoder = new geocodingLibrary.Geocoder();
 
     bindMapInteractionListeners();
     initZonesAndStations();
 
+    window.clearTimeout(mapsLoadTimer);
     state.mapReady = true;
     setMapStatus(
       "ready",
@@ -2471,9 +2525,9 @@ async function initMap() {
 }
 
 function handleMapsLoadError(message) {
+  state.mapStartupFailed = true;
   window.clearTimeout(mapsLoadTimer);
   state.mapReady = false;
-  invalidatePendingWork();
   if (state.run) state.run.active = false;
 
   setMapStatus("error", "Map unavailable");
@@ -2516,6 +2570,7 @@ function handleResponseAreaChange() {
   if (
     state.run &&
     state.run.active &&
+    !state.run.fixedAssignment &&
     mode !== "idle"
   ) {
     startRun(mode, state.run.totalRounds, ui.stationSelect);
@@ -2542,15 +2597,17 @@ ui.startCrossStreetGame.addEventListener("click", function () {
 ui.startHundredBlockGame.addEventListener("click", function () {
   startRun("hundred-blocks-game", GAME_ROUNDS, ui.startHundredBlockGame);
 });
+ui.openInstructor.addEventListener("click", openInstructorRoutes);
+ui.instructorAddress.addEventListener("input", refreshInstructorMatches);
+ui.instructorMatch.addEventListener("change", refreshInstructorRoutes);
+ui.instructorForm.addEventListener("submit", startInstructorRoute);
+ui.practiceInstructorRoute.addEventListener("click", practiceInstructorRoute);
+ui.closeInstructor.addEventListener("click", () => ui.instructorDialog.close());
+ui.saveInstructorRoute.addEventListener("click", saveInstructorRoute);
+ui.nextCall.addEventListener("click", advanceReviewedRound);
+ui.revealAnswerMap.addEventListener("click", revealKnowledgeMap);
 ui.textAnswerForm.addEventListener("submit", function (event) {
   event.preventDefault();
-  if (
-    currentMode() === "hundred-blocks-game" &&
-    currentRoundIs("settled")
-  ) {
-    advanceHundredBlockRound();
-    return;
-  }
   settleKnowledgeRound();
 });
 ui.answerOne.addEventListener("keydown", function (event) {

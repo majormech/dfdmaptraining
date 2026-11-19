@@ -89,6 +89,72 @@ input:disabled {
   display: none !important;
 }
 
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.review-actions:not(:has(> :not([hidden]))) {
+  display: none;
+}
+
+.review-actions:has(> :not([hidden])) {
+  padding-block: 4px;
+}
+
+.review-actions > button {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+#instructor-dialog {
+  max-height: 90dvh;
+  overflow: auto;
+  padding: 20px;
+}
+
+#instructor-dialog[open] {
+  display: block;
+}
+
+.instructor-form {
+  display: grid;
+  gap: 10px;
+}
+
+.instructor-form .field {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.instructor-form input,
+.instructor-form textarea {
+  width: 100%;
+  padding: 8px 11px;
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.instructor-routes {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.instructor-routes:empty {
+  display: none;
+}
+
+.instructor-routes button {
+  width: auto;
+  margin: 4px 8px;
+}
+
 .skip-link {
   position: fixed;
   top: 8px;
@@ -911,6 +977,7 @@ th:last-child {
 
 .map-result {
   min-width: 220px;
+  max-width: 320px;
   display: grid;
   gap: 7px;
   padding: 3px 2px;
@@ -931,6 +998,7 @@ th:last-child {
   justify-content: space-between;
   gap: 16px;
   font-size: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 .map-result-row > span:first-child {
@@ -1218,7 +1286,8 @@ th:last-child {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-header[data-station-scoped-active="true"] .setup-panel .switch-control {
+  .app-header[data-station-scoped-active="true"] .setup-panel .switch-control,
+  .app-header[data-station-scoped-active="true"] #open-instructor {
     display: none;
   }
 
