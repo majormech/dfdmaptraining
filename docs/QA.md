@@ -149,6 +149,11 @@ Use this checklist before treating a local build as ready for deployment.
       mixes in fresh prompts, and removes a miss after a successful retry.
 - [ ] Two approved routes can be saved for the same station and address. The
       closest approved route and its notes appear in review after reloading.
+- [ ] Select Station 1, then draw or practice an instructor assignment for
+      Station 6. The response-area selector shows Station 6 and is locked.
+      After finishing the assignment or switching directly to a regular drill,
+      it shows Station 1 again. Changing a map option during the assignment
+      and reloading also restores Station 1.
 - [ ] Another station or address uses its own routes, or labeled Google
       references when no approved routes are available.
 

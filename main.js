@@ -310,6 +310,7 @@ const SETTINGS_KEY = "dfd-trainer.settings.v1";
 let settings = {};
 try { settings = JSON.parse(window.localStorage.getItem(SETTINGS_KEY)) || {}; } catch { /* Use defaults. */ }
 if (Array.from(ui.stationSelect.options).some((option) => option.value === settings.station)) ui.stationSelect.value = settings.station;
+let preferredStationId = ui.stationSelect.value;
 ui.mapLabelsCheckbox.checked = settings.hideLabels === true;
 ui.zonesCheckbox.checked = settings.showZones !== false;
 ui.practiceMisses.checked = settings.practiceMisses === true;
@@ -317,7 +318,7 @@ ui.practiceMisses.checked = settings.practiceMisses === true;
 function saveSettings(mode) {
   settings = {
     mode: mode || settings.mode,
-    station: ui.stationSelect.value,
+    station: preferredStationId,
     hideLabels: ui.mapLabelsCheckbox.checked,
     showZones: ui.zonesCheckbox.checked,
     practiceMisses: ui.practiceMisses.checked,
@@ -461,7 +462,9 @@ function updateControls() {
     button.disabled = !mapReady || roundBusy;
   });
 
-  ui.stationSelect.disabled = !mapReady || roundBusy || Boolean(state.run?.active && state.run.fixedAssignment);
+  const fixedAssignment = state.run?.active && state.run.fixedAssignment;
+  ui.stationSelect.value = fixedAssignment ? state.run.stationId : preferredStationId;
+  ui.stationSelect.disabled = !mapReady || roundBusy || Boolean(fixedAssignment);
   ui.zonesCheckbox.disabled = !mapReady || knowledgeActive;
   ui.mapLabelsCheckbox.disabled = !mapReady || roundBusy || knowledgeActive;
   ui.textAnswerForm.hidden = !knowledgeActive;
@@ -1043,11 +1046,7 @@ function updateRouteDrawingGuidance() {
 function startRun(mode, totalRounds, sourceButton, assignment = null) {
   if (!state.mapReady) return;
 
-  const selectedStationId = assignment?.stationId || (
-    ui.stationSelect && ui.stationSelect.value
-      ? String(ui.stationSelect.value)
-      : "any");
-  const stationId = selectedStationId;
+  const stationId = assignment?.stationId || preferredStationId;
   const scopeLabel =
     stationId === "any"
       ? "Citywide"
@@ -2671,6 +2670,7 @@ function toggleHeaderPanel() {
 }
 
 function handleResponseAreaChange() {
+  preferredStationId = ui.stationSelect.value;
   saveSettings();
   const mode = currentMode();
   if (

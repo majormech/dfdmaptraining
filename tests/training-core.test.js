@@ -226,6 +226,24 @@ test("malformed block numbers cannot earn number credit", function () {
   }
 });
 
+test("a mistyped direction preserves independent block-number credit", function () {
+  for (const [response, numberCredit, directionCredit] of [
+    ["1000 N.", 80, 20],
+    ["N. 1,000", 80, 20],
+    ["1000 NE", 80, 0],
+    ["N.E. 1000", 80, 0],
+    ["1100 nort", 64, 0],
+    ["1.000 N.", 0, 20],
+  ]) {
+    const result = Core.scoreHundredBlockAnswer(response, "1000 N");
+    assert.equal(result.numberCredit, numberCredit, response);
+    assert.equal(result.directionCredit, directionCredit, response);
+  }
+  const pair = Core.evaluateHundredBlockPair(["1100 NE", "1000 N."], ["1000 N", "1100 N"]);
+  assert.equal(pair.creditPercent, 90);
+  assert.equal(pair.penalty, 10);
+});
+
 test("hundred-block pair scoring favors exact numbers before directions", function () {
   const expected = [
     { display: "1000 N block", aliases: [] },

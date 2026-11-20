@@ -261,6 +261,7 @@
       .toLowerCase()
       .replace(/(\d)([a-z])/g, "$1 $2")
       .replace(/([a-z])(\d)/g, "$1 $2")
+      .replace(/(^|\s)([nsew])\.(?=\s|\d|$)/g, "$1$2 ")
       .trim();
     if (!normalized) {
       return { blockNumber: null, direction: null, normalized: "" };
@@ -280,6 +281,8 @@
       west: "west",
     };
     const numberTokens = words.filter(function (word) {
+      // With one number and one direction word, a typo only costs direction credit.
+      if (words.length === 2 && /^[a-z]+(?:\.[a-z]+)*\.?$/.test(word)) return false;
       return !Object.hasOwn(directionMap, word);
     });
     const numberToken = numberTokens[0];

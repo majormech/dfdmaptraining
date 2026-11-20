@@ -1,6 +1,6 @@
 {
   "name": "decatur-fire-map-trainer",
-  "version": "0.6.0",
+  "version": "0.6.2",
   "private": true,
   "description": "Static Decatur Fire map, route, cross-street, and hundred-block training app.",
   "scripts": {

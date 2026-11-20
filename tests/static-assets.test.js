@@ -17,6 +17,14 @@ const stylesCss = fs.readFileSync(
   "utf8"
 );
 
+test("the page loads scoring and application scripts with the current release version", function () {
+  const { version } = require("../package.json");
+  const scripts = Array.from(indexHtml.matchAll(/<script src="([^"]+)"/g), (match) => match[1]);
+  const scoring = scripts.indexOf("training-core.js?v=" + version);
+  assert.ok(scoring >= 0, "missing current scoring script");
+  assert.ok(scripts.indexOf("main.js?v=" + version) > scoring, "load the current app after scoring");
+});
+
 test("every local script, stylesheet, image, and icon reference exists", function () {
   const references = [];
   const pattern = /(?:src|href)="([^"]+)"/g;
@@ -137,11 +145,11 @@ test("cross-street and hundred-block games are wired into the application shell"
   );
   assert.ok(
     indexHtml.indexOf('src="active-address-data.js?v=0.6.0"') <
-      indexHtml.indexOf('src="main.js?v=0.6.1"')
+      indexHtml.indexOf('src="main.js?')
   );
   assert.ok(
     indexHtml.indexOf('src="knowledge-data.js?v=0.6.0"') <
-      indexHtml.indexOf('src="main.js?v=0.6.1"')
+      indexHtml.indexOf('src="main.js?')
   );
   assert.match(indexHtml, /<th scope="col">Prompt<\/th>/);
   assert.equal(mainJs.includes("function isKnowledgeMode"), true);
@@ -168,7 +176,6 @@ test("cross-street and hundred-block games are wired into the application shell"
     mainJs,
     /function questionBankForMode\(mode, stationId\)[\s\S]*?question\.stationIds\.includes\(String\(stationId\)\)/
   );
-  assert.equal(mainJs.includes("const stationId = selectedStationId"), true);
   assert.equal(mainJs.includes('"Station " + stationId + " response area"'), true);
   assert.match(indexHtml, /id="answer-feedback"[\s\S]*?aria-atomic="true"/);
   assert.match(
