@@ -33,6 +33,17 @@ is independent. The two answer scores are averaged, and the round penalty is
 
 ## Review and practice
 
+The call bar stays visible when the setup panel is collapsed. The bottom bar
+holds the primary action for answering, submitting a route, or advancing.
+The trainer remembers the last drill, response area, and map preferences in
+the current browser.
+
+On a touch screen, pan under the crosshair and use **Place pin** or **Add route
+point**. Turn off **Crosshair entry** to place points by tapping the map. **Undo
+point** works repeatedly, and **Restore route** recovers the last cleared path
+within the current round. Use **Recenter map** to return to the assigned
+station during a call or **Fit review** to see the scored map again.
+
 After scoring a game round, review the answer and select **Next call** or
 **View results**. Route review marks the first significant departure from the
 closest reference and the first place the two routes rejoin, when present.

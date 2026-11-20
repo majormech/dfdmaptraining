@@ -26,7 +26,7 @@
   <meta name="twitter:image" content="og.png" />
   <title>Decatur Fire Map Trainer</title>
   <link rel="icon" type="image/png" href="og.png" />
-  <link rel="stylesheet" href="styles.css?v=0.6.0" />
+  <link rel="stylesheet" href="styles.css?v=0.6.1" />
 </head>
 <body>
   <a class="skip-link" href="#map">Skip to training map</a>
@@ -63,6 +63,22 @@
         <span class="toggle-label">Hide panel</span>
       </button>
     </div>
+
+    <section class="call-summary" aria-label="Current call">
+        <div class="call-heading">
+          <div>
+            <span id="mode-label" class="mode-badge">Stand by</span>
+            <span id="game-info" class="round-label">Map initialization</span>
+          </div>
+          <div class="score-card" aria-label="Current penalty score">
+            <span>Penalty</span>
+            <strong id="game-score">—</strong>
+            <small>Lower is better</small>
+          </div>
+        </div>
+
+        <h2 id="address">Preparing training map…</h2>
+    </section>
 
     <div id="header-content" class="header-content">
       <section class="setup-panel" aria-label="Map setup">
@@ -107,19 +123,7 @@
         aria-labelledby="address"
         aria-busy="true"
       >
-        <div class="call-heading">
-          <div>
-            <span id="mode-label" class="mode-badge">Stand by</span>
-            <span id="game-info" class="round-label">Map initialization</span>
-          </div>
-          <div class="score-card" aria-label="Current penalty score">
-            <span>Penalty</span>
-            <strong id="game-score">—</strong>
-            <small>Lower is better</small>
-          </div>
-        </div>
 
-        <h2 id="address">Preparing training map…</h2>
         <p id="status" class="call-status" role="status" aria-live="polite">
           Loading Google Maps, station locations, and response zones.
         </p>
@@ -161,13 +165,7 @@
                   required
                 />
               </label>
-              <button
-                id="submit-text-answer"
-                class="utility-button submit answer-submit"
-                type="submit"
-              >
-                Check answer
-              </button>
+
             </div>
           </fieldset>
           <p id="answer-help" class="answer-help">
@@ -255,11 +253,18 @@
       <button id="clear-route" class="utility-button" type="button" disabled>
         Clear route
       </button>
+      <button id="restore-route" class="utility-button" type="button" hidden>Restore route</button>
+      <button id="center-entry" class="utility-button" type="button" aria-pressed="false">Crosshair entry</button>
+      <button id="add-center-point" class="utility-button" type="button">Place pin</button>
+    </div>
+    <div class="review-actions round-actions" role="group" aria-label="Round actions">
+      <p id="round-recap" hidden></p>
+      <button id="recenter-map" class="utility-button" type="button" hidden>Recenter map</button>
+      <button id="repeat-drill" class="utility-button" type="button" hidden></button>
+      <button id="submit-text-answer" class="utility-button submit" type="submit" form="text-answer-form" hidden>Check answer</button>
       <button id="submit-route" class="utility-button submit" type="button" disabled>
         Submit route
       </button>
-    </div>
-    <div class="review-actions" aria-label="Round review">
       <button id="reveal-answer-map" class="utility-button" type="button" hidden>Reveal answer on map</button>
       <button id="next-call" class="utility-button submit" type="button" hidden>Next call</button>
       <button id="save-instructor-route" class="utility-button submit" type="button" hidden>Save approved route</button>
@@ -329,7 +334,7 @@
   <script src="hundred-block-data.js?v=0.6.0"></script>
   <script src="knowledge-data.js?v=0.6.0"></script>
   <script src="training-core.js?v=0.6.0"></script>
-  <script src="main.js?v=0.6.0"></script>
+  <script src="main.js?v=0.6.1"></script>
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBRviChdXx4HkKODkkI3BSXNurEziuvIo&v=weekly&libraries=marker,routes&loading=async&callback=initMap"
     async

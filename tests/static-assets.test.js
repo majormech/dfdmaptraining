@@ -137,11 +137,11 @@ test("cross-street and hundred-block games are wired into the application shell"
   );
   assert.ok(
     indexHtml.indexOf('src="active-address-data.js?v=0.6.0"') <
-      indexHtml.indexOf('src="main.js?v=0.6.0"')
+      indexHtml.indexOf('src="main.js?v=0.6.1"')
   );
   assert.ok(
     indexHtml.indexOf('src="knowledge-data.js?v=0.6.0"') <
-      indexHtml.indexOf('src="main.js?v=0.6.0"')
+      indexHtml.indexOf('src="main.js?v=0.6.1"')
   );
   assert.match(indexHtml, /<th scope="col">Prompt<\/th>/);
   assert.equal(mainJs.includes("function isKnowledgeMode"), true);

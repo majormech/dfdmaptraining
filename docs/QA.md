@@ -134,6 +134,15 @@ Use this checklist before treating a local build as ready for deployment.
 - [ ] A late route response cannot score a newer game.
 - [ ] A settled round in any game stays on screen until Next call or View
       results. Starting another mode discards that review.
+- [ ] The call stays visible when the panel is collapsed. The bottom bar
+      shows Check answer, Submit route, Retry route, or Next call as appropriate.
+- [ ] Crosshair entry pans without adding a point. Place pin and Add route
+      point use the crosshair position. Undo works more than once, and Restore
+      route recovers a cleared drawing within the current round.
+- [ ] Recenter map shows the assigned station during an open round. Fit review
+      brings the scored locations or route back into view.
+- [ ] Reload restores the last station and map options, and the quick-start
+      button starts the last drill type.
 - [ ] Both recall modes can reveal the verified point, answer, and supported
       street geometry after scoring. The next unanswered round conceals the map.
 - [ ] Practice my misses prioritizes saved misses for the active mode and station,

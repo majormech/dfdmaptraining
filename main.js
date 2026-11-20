@@ -60,6 +60,12 @@ const ui = {
   mapShell: document.querySelector(".map-shell"),
   mapElement: document.getElementById("map"),
   header: document.getElementById("header"),
+  centerEntry: document.getElementById("center-entry"),
+  addCenterPoint: document.getElementById("add-center-point"),
+  restoreRoute: document.getElementById("restore-route"),
+  recenterMap: document.getElementById("recenter-map"),
+  repeatDrill: document.getElementById("repeat-drill"),
+  roundRecap: document.getElementById("round-recap"),
   headerContent: document.getElementById("header-content"),
   toggleHeader: document.getElementById("toggle-header"),
   toggleHeaderIcon: document.querySelector("#toggle-header > span"),
@@ -299,6 +305,26 @@ function shuffledCopy(items) {
   return copy;
 }
 
+const DRILL_MODES = ["distance-single", "distance-game", "route-single", "route-game", "cross-streets-game", "hundred-blocks-game"];
+const SETTINGS_KEY = "dfd-trainer.settings.v1";
+let settings = {};
+try { settings = JSON.parse(window.localStorage.getItem(SETTINGS_KEY)) || {}; } catch { /* Use defaults. */ }
+if (Array.from(ui.stationSelect.options).some((option) => option.value === settings.station)) ui.stationSelect.value = settings.station;
+ui.mapLabelsCheckbox.checked = settings.hideLabels === true;
+ui.zonesCheckbox.checked = settings.showZones !== false;
+ui.practiceMisses.checked = settings.practiceMisses === true;
+
+function saveSettings(mode) {
+  settings = {
+    mode: mode || settings.mode,
+    station: ui.stationSelect.value,
+    hideLabels: ui.mapLabelsCheckbox.checked,
+    showZones: ui.zonesCheckbox.checked,
+    practiceMisses: ui.practiceMisses.checked,
+  };
+  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Keep session settings. */ }
+}
+
 const MISSES_KEY = "dfd-trainer.misses.v1";
 const APPROVED_ROUTES_KEY = "dfd-trainer.approved-routes.v1";
 const sessionLists = new Map();
@@ -447,6 +473,16 @@ function updateControls() {
   ui.openInstructor.disabled = !mapReady || roundBusy || knowledgeActive;
   const reviewReady = Boolean(state.run?.active && currentRoundIs("settled"));
   const mapConcealed = knowledgeActive && !state.round?.mapRevealed;
+  const settled = currentRoundIs("settled");
+  ui.recenterMap.disabled = roundBusy;
+  const lastDrill = DRILL_MODES.includes(settings.mode) ? MODE_LABELS[settings.mode] : null;
+  ui.repeatDrill.hidden = !mapReady || state.run?.active || !lastDrill;
+  ui.repeatDrill.textContent = lastDrill ? "Start " + lastDrill.toLowerCase() : "";
+  ui.recenterMap.hidden = !mapReady || mapConcealed || (!state.round?.address && !state.round?.mapRevealed);
+  ui.recenterMap.textContent = settled ? "Fit review" : "Recenter map";
+  ui.roundRecap.hidden = !settled || !state.round?.recap;
+  ui.roundRecap.textContent = settled ? state.round?.recap || "" : "";
+  ui.mapShell.dataset.centerEntry = String(currentRoundIs("open") && isRouteMode(currentMode()) && ui.centerEntry.getAttribute("aria-pressed") === "true");
   ui.nextCall.hidden = !reviewReady;
   ui.nextCall.textContent = state.round?.index === state.run?.totalRounds ? "View results" : "Next call";
   ui.revealAnswerMap.hidden = !reviewReady || !mapConcealed;
@@ -474,7 +510,10 @@ function updateControls() {
     Boolean(currentRoundIs("open") && isMapSelectionMode(currentMode()))
   );
 
-  ui.submitRoute.hidden = Boolean(state.run?.instructor);
+  ui.submitRoute.hidden = !routeMode || Boolean(state.run?.instructor);
+  ui.submitRoute.textContent = state.round?.retryRoute ? "Retry route" : "Submit route";
+  ui.restoreRoute.hidden = !routeMode || !state.round?.clearedRoute;
+  ui.restoreRoute.disabled = !currentRoundIs("open");
   if (!routeMode) {
     if (!routeSession) ui.acceptedRouteLegend.hidden = true;
     ui.moveRouteGuess.disabled = true;
@@ -492,6 +531,9 @@ function updateControls() {
   const hasGuess = Boolean(guessMarker);
   const hasDrawnPoint = pathLength > 1;
 
+  ui.centerEntry.disabled = !routeOpen;
+  ui.addCenterPoint.disabled = !routeOpen;
+  ui.addCenterPoint.textContent = hasGuess ? "Add route point" : "Place pin";
   ui.moveRouteGuess.disabled = !routeOpen || !hasGuess || Boolean(state.run.instructor);
   ui.undoRoute.disabled = !routeOpen || !hasDrawnPoint;
   ui.clearRoute.disabled = !routeOpen || !hasDrawnPoint;
@@ -604,6 +646,7 @@ function ensureOverlayMarkerRendererClass() {
       glyph.textContent = this.owner.pin.glyphText;
       pin.appendChild(glyph);
       element.appendChild(pin);
+      if (this.owner.reviewLabel) element.appendChild(reviewMapLabel(this.owner.reviewLabel));
 
       if (interactive) {
         const activateMarker = (event) => {
@@ -728,6 +771,7 @@ class TrainingMarker {
     const pinOptions = options.pin || {};
     const label = options.label || null;
     this.title = options.title || "Map marker";
+    this.reviewLabel = options.reviewLabel;
     this.clickable = Boolean(options.gmpClickable);
     this.draggable = Boolean(options.gmpDraggable);
     this.pin = {
@@ -857,7 +901,14 @@ class TrainingMarker {
         gmpClickable: this.clickable,
         gmpDraggable: this.draggable,
       });
-      renderer.append(pin);
+      if (this.reviewLabel) {
+        const labeledPin = document.createElement("div");
+        labeledPin.className = "review-map-pin";
+        labeledPin.append(pin, reviewMapLabel(this.reviewLabel));
+        renderer.append(labeledPin);
+      } else {
+        renderer.append(pin);
+      }
       if (this.clickable) {
         renderer.addEventListener("gmp-click", (event) => {
           this.emit("gmp-click", event);
@@ -1036,6 +1087,7 @@ function startRun(mode, totalRounds, sourceButton, assignment = null) {
     return;
   }
 
+  if (!assignment) saveSettings(mode);
   if (state.run) state.run.active = false;
   state.lastPenalty = null;
   state.resultReturnFocus = sourceButton || document.activeElement;
@@ -1241,9 +1293,16 @@ async function loadNextRound(runId) {
   updateControls();
 }
 
-function addReviewMarker(position, title, glyph) {
+function reviewMapLabel(text) {
+  const label = document.createElement("span");
+  label.className = "review-map-label";
+  label.textContent = text;
+  return label;
+}
+
+function addReviewMarker(position, title, glyph, reviewLabel) {
   reviewMarkers.push(createMarker({
-    position, map, title,
+    position, map, title, reviewLabel,
     pin: { background: "#136f78", glyphText: glyph },
   }));
 }
@@ -1316,7 +1375,8 @@ async function revealKnowledgeMap() {
         addReviewMarker(first, properties.SB_FSTREET, "1");
         addReviewMarker(last, properties.SB_TSTREET, "2");
       }
-      fitPoints([question.coordinates, ...nearbyPaths.flat()]);
+      round.reviewPoints = [question.coordinates, ...nearbyPaths.flat()];
+      fitPoints(round.reviewPoints);
     }
   } catch {
     if (isCurrentRound(round.runId, round.id)) {
@@ -1424,7 +1484,8 @@ function settleDistanceRound(latLng) {
     { label: "Location error", value: Math.round(distanceFeet) + " ft" },
     { label: "Penalty", value: String(penalty), strong: true },
   ]);
-  fitPoints([latLng, actualLatLng]);
+  round.reviewPoints = [latLng, actualLatLng];
+  fitPoints(round.reviewPoints);
 
   const detail = {
     address: round.address.label,
@@ -1446,6 +1507,11 @@ function settleDistanceRound(latLng) {
 }
 
 function reviewSettledRound(run, round, title, detail) {
+  if (round.question) {
+    round.recap = round.question.answers.map((answer) => answer.display).join(" · ") + " · " + state.lastPenalty + " penalty";
+  } else if (activeMapResult) {
+    round.recap = ui.status.textContent;
+  }
   if (run.totalRounds === 1) run.active = false;
   setStep(title, detail);
   updateGameUI();
@@ -1668,12 +1734,40 @@ function moveRouteGuess() {
 function clearRoute() {
   if (!routePolyline || !currentRoundIs("open")) return;
   const station = stationOriginForAddress(state.round.address);
-  if (!station) return;
+  if (!station || routePolyline.getPath().getLength() < 2) return;
+  state.round.clearedRoute = routePolyline.getPath().getArray().slice();
   setRoutePath([
     new google.maps.LatLng(station.lat, station.lng),
   ]);
   updateRouteDrawingGuidance();
   updateControls();
+}
+
+function restoreRoute() {
+  if (!currentRoundIs("open") || !state.round.clearedRoute) return;
+  const path = state.round.clearedRoute;
+  if (routePolyline.getPath().getLength() > 1 && !window.confirm("Replace the current drawing with the cleared route?")) return;
+  state.round.clearedRoute = null;
+  setRoutePath(path);
+  updateControls();
+}
+
+function recenterMap() {
+  const round = state.round;
+  if (!map || ui.recenterMap.hidden || !round) return;
+  if (round.status === "settled") {
+    if (round.reviewPoints?.length) fitPoints(round.reviewPoints);
+    else if (round.mapRevealed) {
+      map.setCenter(round.question.coordinates);
+      map.setZoom(17);
+    }
+    return;
+  }
+  const station = stationOriginForAddress(round.address);
+  if (station) {
+    map.setCenter({ lat: station.lat, lng: station.lng });
+    map.setZoom(15);
+  }
 }
 
 let instructorMatches = [];
@@ -1792,6 +1886,7 @@ function saveInstructorRoute() {
     return;
   }
   round.status = "settled";
+  round.reviewPoints = path;
   setRoutePath(path);
   setRouteEditable(false);
   setStatus("Saved " + name + " for " + round.address.label + " from Station " + stationId + ".");
@@ -1923,6 +2018,7 @@ async function submitRoute() {
   drawnPathSnapshot[0] = origin;
   const userPath = appendGuessToPath(drawnPathSnapshot, guessSnapshot);
   round.status = "submitting";
+  round.retryRoute = false;
   guessMarker.setDraggable(false);
   guessMarker.setPosition(guessSnapshot);
   setRoutePath(userPath);
@@ -1952,7 +2048,8 @@ async function submitRoute() {
     setRouteEditable(true);
     guessMarker.setDraggable(true);
     setBusy(false);
-    setStatus(error.message + " You can try Submit again.");
+    round.retryRoute = true;
+    setStatus(error.message + " Your drawing was kept.");
     setStep(
       "Route not scored",
       "Your drawing is still available. Try submitting again."
@@ -1984,7 +2081,8 @@ async function submitRoute() {
     setRouteEditable(true);
     guessMarker.setDraggable(true);
     setBusy(false);
-    setStatus("No usable reference route was available. Try Submit again.");
+    round.retryRoute = true;
+    setStatus("No usable reference route was available. Your drawing was kept.");
     updateControls();
     return;
   }
@@ -2027,8 +2125,8 @@ async function submitRoute() {
   });
   ui.acceptedRouteLegend.hidden = false;
   ui.referenceRouteLabel.textContent = approvedRoutes.length ? "Closest instructor-approved route" : "Closest Google reference";
-  if (comparison.departure) addReviewMarker(comparison.departure, "First significant departure", "1");
-  if (comparison.rejoin) addReviewMarker(comparison.rejoin, "First rejoin", "2");
+  if (comparison.departure) addReviewMarker(comparison.departure, "First significant departure", "D", "Departure");
+  if (comparison.rejoin) addReviewMarker(comparison.rejoin, "First rejoin", "R", "Rejoin");
 
   const resultLines = [
     { label: "Location error", value: Math.round(distanceFeet) + " ft" },
@@ -2043,7 +2141,8 @@ async function submitRoute() {
   ];
   if (closestRoute.notes) resultLines.push({ label: "Instructor notes", value: closestRoute.notes });
   showMapResult(destination, addressSnapshot.label, resultLines);
-  fitPoints(referencePath.concat(userPath));
+  round.reviewPoints = referencePath.concat(userPath);
+  fitPoints(round.reviewPoints);
 
   run.details.push({
     address: addressSnapshot.label,
@@ -2070,9 +2169,9 @@ async function submitRoute() {
   );
   recordPracticeOutcome(round, locationPenalty > 1 || routePenalty > 1);
   const reviewDetail = comparison.rejoin
-    ? "Marker 1 shows your first departure; marker 2 shows where you rejoin."
+    ? "Departure marks the first difference; Rejoin marks where the routes meet again."
     : comparison.departure
-      ? "Marker 1 shows your first departure. No rejoin was found."
+      ? "Departure marks the first difference. The routes did not rejoin."
       : "Review your route and the closest reference on the map.";
   reviewSettledRound(run, round, "Route scored", reviewDetail);
 }
@@ -2173,6 +2272,7 @@ function handleMapSelection(latLng) {
 }
 
 function handleMapClick(event) {
+  if (ui.mapShell.dataset.centerEntry === "true") return;
   handleMapSelection(event.latLng);
 }
 
@@ -2365,6 +2465,11 @@ function bindMapKeyboardSelection() {
           )
         : null;
     if (interactiveTarget) return;
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z" && isRouteMode(currentMode()) && currentRoundIs("open")) {
+      event.preventDefault();
+      undoRoutePoint();
+      return;
+    }
     if (
       (event.key === "Enter" || event.key === " ") &&
       map &&
@@ -2566,6 +2671,7 @@ function toggleHeaderPanel() {
 }
 
 function handleResponseAreaChange() {
+  saveSettings();
   const mode = currentMode();
   if (
     state.run &&
@@ -2608,6 +2714,7 @@ ui.nextCall.addEventListener("click", advanceReviewedRound);
 ui.revealAnswerMap.addEventListener("click", revealKnowledgeMap);
 ui.textAnswerForm.addEventListener("submit", function (event) {
   event.preventDefault();
+  setHeaderPanelExpanded(true);
   settleKnowledgeRound();
 });
 ui.answerOne.addEventListener("keydown", function (event) {
@@ -2628,14 +2735,28 @@ ui.answerOne.addEventListener("keydown", function (event) {
     }
   });
 });
+ui.centerEntry.setAttribute("aria-pressed", String(window.matchMedia("(pointer: coarse)").matches));
+ui.centerEntry.addEventListener("click", () => {
+  ui.centerEntry.setAttribute("aria-pressed", String(ui.centerEntry.getAttribute("aria-pressed") !== "true"));
+  updateControls();
+});
+ui.addCenterPoint.addEventListener("click", () => handleMapSelection(map.getCenter()));
+ui.restoreRoute.addEventListener("click", restoreRoute);
+ui.recenterMap.addEventListener("click", recenterMap);
+ui.repeatDrill.addEventListener("click", () => {
+  const mode = settings.mode;
+  if (DRILL_MODES.includes(mode)) startRun(mode, isGameMode(mode) ? GAME_ROUNDS : 1, ui.repeatDrill);
+});
+ui.practiceMisses.addEventListener("change", () => saveSettings());
 ui.undoRoute.addEventListener("click", undoRoutePoint);
 ui.clearRoute.addEventListener("click", clearRoute);
 ui.submitRoute.addEventListener("click", function () {
   void submitRoute();
 });
 ui.moveRouteGuess.addEventListener("click", moveRouteGuess);
-ui.zonesCheckbox.addEventListener("change", applyZoneVisibility);
+ui.zonesCheckbox.addEventListener("change", () => { saveSettings(); applyZoneVisibility(); });
 ui.mapLabelsCheckbox.addEventListener("change", function () {
+  saveSettings();
   recreateMapForLabels(ui.mapLabelsCheckbox.checked);
 });
 ui.closeResults.addEventListener("click", closeResults);
