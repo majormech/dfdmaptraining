@@ -1,23 +1,20 @@
 # Decatur Fire Map Trainer
 
-A browser-based station, address-location, route, cross-street, and hundred-block
-training tool for Decatur, Illinois. The project intentionally stays on plain
-HTML, CSS, and JavaScript so it can be reviewed and tested locally before
-choosing a hosting or backend platform.
+Practice finding Decatur addresses, drawing routes from a fire station, and
+recalling cross streets and 100-block lines. Choose **Any station** to train
+citywide or select a Station 1–7 response area. [Open the live map trainer](https://majormech.github.io/dfdmaptraining/)
 
 ## Training modes
 
-- Single location drill
-- 10-address location game
-- Single route drill
-- 10-address route game
-- 10-address cross-street game with citywide or station-area scope
-- 10-question hundred-block-line game with citywide or station-area scope
-- Best-match scoring across instructor-approved routes or Google references
-- Editable route lines, draggable address guesses, and keyboard route entry
-- Location and route calls drawn from the official active-address layer
-- Optional response-zone overlays
-- A Hide map labels switch that preserves the current drill and camera
+| Mode | What you do |
+| --- | --- |
+| Location | Place a real address on the map and see how far off you were. Choose a single call or a 10-call game. |
+| Route | Pin the address, draw the route from the assigned station, and compare it with the closest instructor-approved or Google route. Choose a single call or a 10-call game. |
+| Cross streets | Enter the two streets that bound the given address. Each game has 10 questions. |
+| 100-block lines | Enter the two adjoining hundred blocks and their directions. Each game has 10 questions. |
+
+For a harder map drill, turn on **Hide map labels** to hide road, park, lake,
+business, and public-building names. **Response zones** toggles station boundaries.
 
 All modes retain a penalty score: **lower is better**. Cross-street rounds score
 1 penalty point when both blanks are correct, 50 when one is correct, and 100
@@ -29,7 +26,9 @@ Each hundred-block answer earns up to 100 credit: 80 for the block number and
 away from the correct hundred block: 80 exact, then 64, 48, 32, 16, and 8 at
 100 through 500 away; farther answers earn no numeric credit. Direction credit
 is independent. The two answer scores are averaged, and the round penalty is
-`100 - credit`, with the existing 1-point minimum for a perfect answer.
+`100 - credit`, with a 1-point minimum for a perfect answer. For an expected
+answer of `1000 N`, entering `1000 N.` earns all 100 points and `1000 NE`
+earns the 80 points for the correct number.
 
 ## Review and practice
 
@@ -38,7 +37,7 @@ holds the primary action for answering, submitting a route, or advancing.
 The trainer remembers the last drill, response area, and map preferences in
 the current browser.
 
-On a touch screen, pan under the crosshair and use **Place pin** or **Add route
+In a route drill on a touch screen, pan under the crosshair and use **Place pin** or **Add route
 point**. Turn off **Crosshair entry** to place points by tapping the map. **Undo
 point** works repeatedly, and **Restore route** recovers the last cleared path
 within the current round. Use **Recenter map** to return to the assigned
@@ -60,13 +59,21 @@ In **Instructor routes**, search for an official address, choose its station,
 and enter a route name and any notes. Select **Draw route**, click along the
 route to the marked destination, and save it. Repeat to add alternatives or
 select the same assignment to remove a previously saved route. **Practice this
-call** starts a drill for the selected assignment. Training uses
+call** starts a drill for the selected assignment. The response-area selector
+shows the assigned station and locks while drawing or practicing that call.
+Finishing it or starting a regular drill restores your previous station. Training uses
 the closest approved route for the exact station and address, and shows its
 notes with the score. When the assignment has no approved route, the trainer
 uses clearly labeled Google references. Instructor routes are stored in the
 current browser and do not sync across devices.
 
-## Local preview
+## GitHub Pages and local preview
+
+GitHub Pages serves the static files from `main`. Test changes on `trainer`
+before merging into `main`. After the push, check the **pages build and deployment**
+run and open the public trainer to verify the release. Version 0.6.2 loads
+`main.js` and `training-core.js` with the same release number so returning
+browsers fetch the matching scoring rules. [Deployment runs](https://github.com/majormech/dfdmaptraining/actions)
 
 Serve the project directory with any static web server. For example:
 
@@ -80,7 +87,7 @@ files.
 
 ## Automated checks
 
-Node.js 20 or newer is required for the deterministic scoring tests.
+The release checks were tested with Node.js 24. Run them from the repository root.
 
     npm test
     npm run check
@@ -132,20 +139,13 @@ The test suite covers:
 
 ## Correctness safeguards
 
-The improved local version:
-
-- uses official active-address coordinates rather than random reverse-geocoding
-  probes;
-- assigns each usable address through the official response-area polygons;
-- locks each round before accepting a guess or route submission;
-- ignores late results from abandoned modes or rounds;
-- keeps each scored round open for review until the trainee advances;
-- compares segment coverage and the order in which sampled points were traveled;
-- evaluates every available reference-route alternative and scores the closest
-  acceptable match;
-- penalizes omitted route sections, detours, reversed travel, and poor
-  endpoints; and
-- keeps the final score visible after a game ends.
+- Each call uses official address coordinates and station response-area polygons.
+- Submitting a guess locks the round. A late route response from a previous
+  round cannot change the current score.
+- Route scoring compares road coverage, travel order, direction, and endpoints
+  against each available reference. The closest match determines the route score.
+- Each scored game round stays open for review until the trainee advances.
+  The results table shows the final score and each round’s penalty.
 
 ## Location and route address data
 
@@ -208,35 +208,29 @@ Stations 1–7 respectively. Hundred-block station-area counts are 107, 101, 150
 so those counts intentionally overlap. The GIS relationships and territory
 assignments should still receive DFD operational review before deployment.
 
-During a recall game the Google map is concealed and removed from keyboard
-navigation so its labels cannot reveal an answer. The response-area selector
-stays available during both recall games; changing it immediately starts a new
-10-question session from the selected area and resets that session's score. The
-unrelated map-display controls remain locked.
+During each unanswered recall question, the map is concealed and removed from
+keyboard navigation. After scoring, **Reveal answer on map** shows that round’s
+location and supporting street geometry. Changing the response area starts a
+new 10-question session with a fresh score.
 
 ## Google Maps configuration
 
-The Maps JavaScript API key is visible in **index.html** because browser-based
-Maps applications must send a key. Before any future deployment:
+The browser loads the Maps JavaScript API with the key in **index.html**.
+In Google Cloud, maintain website restrictions for the Pages host and API
+restrictions for the Maps JavaScript API and Routes API. Quotas and billing
+alerts are managed there. A separate browser key can be used for local testing.
 
-1. restrict the key to the intended HTTPS hostnames;
-2. restrict it to only the required Google Maps APIs;
-3. configure quota and billing alerts;
-4. use a separate key for local development if practical; and
-5. replace the document-relative social-preview image URLs in **index.html**
-   with the final absolute HTTPS URL.
-
-The local build uses **AdvancedMarkerElement** on the normal map and
+The trainer uses **AdvancedMarkerElement** on the normal map and
 **Route.computeRoutes** from the weekly Maps JavaScript API. It requests route
 alternatives, scores the user's drawing against every returned path, and shows
 the closest option in teal after scoring.
 
-Advanced Markers require a map ID. The checked-in local configuration uses
-Google's `DEMO_MAP_ID`; replace the `google-maps-map-id` meta value in
-**index.html** with a production JavaScript map ID before deployment. The
+Advanced Markers require a map ID. The checked-in configuration uses Google's
+`DEMO_MAP_ID`. To use a project-owned map ID, set the `google-maps-map-id`
+meta value in **index.html** to that JavaScript map ID. The
 Google Cloud project must have the Maps JavaScript API and Routes API enabled.
 
-The Hide map labels switch works locally without extra Google Cloud setup.
+The Hide map labels switch supports two configurations.
 When its optional `google-maps-hidden-labels-map-id` meta value is empty, the
 app rebuilds the map without a map ID, applies an embedded all-label style, and
 uses accessible DOM overlay markers. Road names, parks, water features,
@@ -244,7 +238,7 @@ businesses, places of worship, civic buildings, neighborhoods, and similar
 Google basemap labels are hidden. Camera position, zones, guesses, and drawn or
 scored routes remain attached during the change.
 
-For production, create a second JavaScript map ID and associate it with a
+To use cloud styling for the hidden-label view, associate a second JavaScript map ID with a
 published cloud map style whose map-feature labels are hidden. Put that ID in
 the `google-maps-hidden-labels-map-id` meta value. The app will then use Advanced
 Markers in both views and will not apply embedded styling. This two-map-ID path
@@ -255,8 +249,9 @@ Routes labeled **Google reference** are generated by the routing engine.
 The **Instructor routes** workflow records approved apparatus routes with
 assignment-specific notes.
 
-## Current scope
+## What is saved
 
-This version stores no accounts, progress, or results. Everything runs in the
-browser. A backend such as Cloudflare Workers and D1 should only be introduced
-after this local behavior and scoring model are accepted.
+Drill settings, missed calls, and instructor-approved routes are saved in the
+current browser on the current device. Clearing site data removes them. Round
+scores and the final results table last for the current session. The trainer
+runs on GitHub Pages without accounts or a backend database.
